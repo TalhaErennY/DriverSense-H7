@@ -1,4 +1,4 @@
-# Project Chimera
+# DriverSense-H7
 
 ### Bare-Metal STM32H7 Telemetry Engine with TinyML-Based Driving Behavior Detection
 
