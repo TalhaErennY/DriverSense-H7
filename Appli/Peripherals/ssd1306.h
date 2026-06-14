@@ -83,4 +83,10 @@ void SSD1306_DrawNumberLarge(uint8_t x, uint8_t y, uint16_t number);
  */
 void SSD1306_DrawDashboard(const Dashboard_Data_t *data);
 
+/*
+ * Text APIs
+ */
+void SSD1306_DrawChar5x7(uint8_t x, uint8_t y, char ch);
+void SSD1306_DrawString5x7(uint8_t x, uint8_t y, const char *str);
+
 #endif /* INC_SSD1306_H_ */

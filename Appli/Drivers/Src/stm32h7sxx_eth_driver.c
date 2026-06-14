@@ -12,26 +12,40 @@
 /******************************************************************************************************
  * 								Private Driver Variables
  ******************************************************************************************************/
-
 /*
- * RX Descriptors and RX Buffers
+ * RX/TX descriptors and RX buffers
  *
- * These variables are placed into .eth_dma section
- * The linker script places .eth_dma at 0x24040000
- * The MPU will later mark this region as non-cacheable
+ * This section is placed into ETH_DMA_RAM.
+ * MPU marks this region as non-cacheable.
  */
 __attribute__((used, section(".eth_dma"), aligned(32)))
 ETH_DMADesc_t ETH_RX_Desc[ETH_RX_DESC_CNT];
 
 __attribute__((used, section(".eth_dma"), aligned(32)))
+ETH_DMADesc_t ETH_TX_Desc[ETH_TX_DESC_CNT];
+
+__attribute__((used, section(".eth_dma"), aligned(32)))
 uint8_t ETH_RX_Buffers[ETH_RX_DESC_CNT][ETH_RX_BUF_SIZE];
 
+
 /*
- * Current RX descriptor index.
+ * TX buffers
+ *
+ * This section is placed into ETH_TX_RAM.
+ * It is outside the MPU non-cacheable ETH DMA region.
+ * Therefore it stays cacheable.
+ */
+__attribute__((used, section(".eth_tx_buffer"), aligned(32)))
+uint8_t ETH_TX_Buffers[ETH_TX_DESC_CNT][ETH_TX_BUF_SIZE];
+
+/*
+ * Current RX/TX descriptor index.
  *
  * This variable is private to Ethernet driver.
  */
 static uint32_t ETH_RX_CurrentDesc = 0U;
+static uint32_t ETH_TX_CurrentDesc = 0U;
+
 
 /******************************************************************************************************
  * 								Private Helper Functions
@@ -81,6 +95,29 @@ static uint8_t ETH_MDIO_WaitReady(void){
 	}
 
 	return 1U;
+}
+
+
+static void ETH_CleanDCacheByAddr(uint32_t addr, uint32_t len){
+	uint32_t clean_addr;
+	uint32_t clean_len;
+	uint32_t end_addr;
+
+	if(len == 0U) return;
+
+	clean_addr = ETH_ALIGN_DOWN(addr);
+	clean_len  = ETH_ALIGN_UP(len + (addr - clean_addr));
+	end_addr   = clean_addr + clean_len;
+
+	CPU_DSB();
+
+	while(clean_addr < end_addr){
+		SCB_DCCMVAC = clean_addr;
+		clean_addr += ETH_CACHE_LINE_SIZE;
+	}
+
+	CPU_DSB();
+	CPU_ISB();
 }
 
 /******************************************************************************************************
@@ -364,7 +401,7 @@ void ETH_MPU_ConfigNonCacheable(void){
  *					-
  *
  */
-void ETH_SetMACAddress(uint8_t *pMACAddr){
+void ETH_SetMACAddress(const uint8_t *pMACAddr){
 	if(pMACAddr == 0) return;
 
 	/*
@@ -452,8 +489,226 @@ void ETH_MTL_RXQueueConfig(uint32_t Value, uint32_t ModeMask){
 	ETH->MTLRXQOMR |= (Value & ModeMask);
 }
 
+/****************************************************************************
+ * @fn				- ETH_MTL_TXQueueConfig
+ *
+ * @brief			- This function configures Ethernet MTL TX queue
+ *
+ * @param[in]		- none
+ * @param[in]		-
+ * @param[in]		-
+ *
+ * @return			- none
+ *
+ * @Note			- Store-and-forward mode is used for simpler TX operation.
+ *					-
+ *
+ */
+void ETH_MTL_TXQueueConfig(uint32_t Value, uint32_t ModeMask){
+	ETH->MTLTXQOMR &= ~(ModeMask);
+	ETH->MTLTXQOMR |= (Value & ModeMask);
+}
+
 /******************************************************************************************************
- * 								DMA Descriptor / RX Path Configuration
+ * 								TX DMA Descriptor / TX Path Configuration
+ ******************************************************************************************************/
+/****************************************************************************
+ * @fn				- ETH_TXDesc_Init
+ *
+ * @brief			- This function initializes Ethernet TX DMA descriptors and buffers
+ *
+ * @param[in]		- none
+ * @param[in]		-
+ * @param[in]		-
+ *
+ * @return			- none
+ *
+ * @Note			- Each TX descriptor points to one TX buffer.
+ * 					- DESC0 contains buffer address.
+ *					- DESC3 is configured with OWN, IOC and BUF1V bits.
+ *					- OWN = 1 gives the descriptor to DMA.
+ *
+ */
+void ETH_TXDesc_Init(void){
+	for(uint32_t i = 0U; i < ETH_TX_DESC_CNT; i++){
+		/*
+		 * Clear TX Buffer
+		 */
+		for(uint32_t j = 0U; j < ETH_TX_BUF_SIZE; j++){
+			ETH_TX_Buffers[i][j] = 0U;
+		}
+
+		/*
+		 * TX Descriptors start as CPU Owned
+		 */
+		ETH_TX_Desc[i].DESC0 = 0U;
+		ETH_TX_Desc[i].DESC1 = 0U;
+		ETH_TX_Desc[i].DESC2 = 0U;
+		ETH_TX_Desc[i].DESC3 = 0U;
+	}
+
+	ETH_TX_CurrentDesc = 0U;
+
+	CPU_DSB();
+}
+
+/****************************************************************************
+ * @fn				- ETH_DMA_TXConfig
+ *
+ * @brief			- This function configures Ethernet TX DMA descriptor list
+ * 					  address, ring length, tail pointer and TX buffer size
+ *
+ * @param[in]		- none
+ * @param[in]		-
+ * @param[in]		-
+ *
+ * @return			- none
+ *
+ * @Note			- TX descriptors must already be initialized before calling
+ * 					  this function.
+ * 					- ETH_TX_Desc is placed in cacheable RAM at 0x24044000.
+ *					-
+ *
+ */
+void ETH_DMA_TXConfig(void){
+	/*
+	 * Channel TX Descriptor ring length register
+	 */
+	ETH->DMACTXRLR = (ETH_TX_DESC_CNT - 1U);
+
+	/*
+	 * Channel TX Descriptor list address register
+	 */
+	ETH->DMACTXDLAR = (uint32_t)&ETH_TX_Desc[0];
+
+	/*
+	 * Channel TX Descriptor tail pointer register
+	 */
+	ETH->DMACTXDTPR = (uint32_t)&ETH_TX_Desc[0];
+}
+
+/****************************************************************************
+ * @fn				- ETH_DMA_TXStart
+ *
+ * @brief			- This function starts Ethernet TX DMA
+ *
+ * @param[in]		- none
+ * @param[in]		-
+ * @param[in]		-
+ *
+ * @return			- none
+ *
+ * @Note			- TX descriptors must be owned by DMA before starting TX DMA.
+ * 					- This sets ETH_DMACTXCR.SR bit.
+ *					-
+ *
+ */
+void ETH_DMA_TXStart(void){
+	ETH->DMACTXCR |= (1UL << ETH_DMACTXCR_ST);
+}
+
+/****************************************************************************
+ * @fn				- ETH_SendRawFrame
+ *
+ * @brief			- T
+ *
+ *
+ * @param[in]		-
+ * @param[in]		-
+ * @param[in]		-
+ *
+ * @return			-
+ *
+ * @Note			-
+ * 					-
+ *
+ *					-
+ *
+ */
+uint8_t ETH_SendRawFrame(const uint8_t *pFrame, uint32_t FrameLen){
+	ETH_DMADesc_t *pDesc;
+	uint32_t next_desc;
+	uint32_t tx_len;
+
+	if((pFrame == 0) || (FrameLen == 0) || (FrameLen > ETH_TX_BUF_SIZE)) return 0U;
+
+	pDesc = &ETH_TX_Desc[ETH_TX_CurrentDesc];
+
+	/*
+	 * If OWN is 1, DMA not finised
+	 */
+	if(pDesc->DESC3 & ETH_TDES3_OWN) return 0U;
+
+	/*
+	 * Ethernet minimum len (60) check and add padding if necessary
+	 */
+	tx_len = FrameLen;
+
+	if(tx_len < 60U){
+		tx_len = 60U;
+	}
+
+	/*
+	 * Clear TX Buffer for padding area
+	 */
+	for(uint32_t i = 0U; i < tx_len; i++){
+		ETH_TX_Buffers[ETH_TX_CurrentDesc][i] = 0U;
+	}
+
+	/*
+	 * Copy frame to TX Buffer
+	 */
+	for(uint32_t i = 0U; i < FrameLen; i++){
+		ETH_TX_Buffers[ETH_TX_CurrentDesc][i] = pFrame[i];
+	}
+
+	/*
+	 * Clean D-cache before giving descriptor to DMA
+	 */
+	ETH_CleanDCacheByAddr((uint32_t)&ETH_TX_Buffers[ETH_TX_CurrentDesc][0], tx_len);
+
+	/*
+	 * Fill TX Descriptors
+	 */
+	pDesc->DESC0 = (uint32_t)&ETH_TX_Buffers[ETH_TX_CurrentDesc][0];
+	pDesc->DESC1 = 0U;
+	pDesc->DESC2 = (tx_len & ETH_TDES2_B1L_MASK);
+
+	/*
+	 * Buffer and descriptor clean check
+	 */
+	CPU_DSB();
+
+	/*
+	 * OWN Must be written last
+	 *
+	 * FD = First Descriptor
+	 * LD = last descriptor
+	 * FL = frame length
+	 */
+	pDesc->DESC3 = (ETH_TDES3_OWN | ETH_TDES3_FD | ETH_TDES3_LD | (tx_len & ETH_TDES3_FL_MASK));
+
+	CPU_DSB();
+
+	/*
+	 * Next descriptor index
+	 */
+	next_desc = ETH_TX_CurrentDesc + 1U;
+
+	if(next_desc >= ETH_TX_DESC_CNT) next_desc = 0U;
+
+	ETH_TX_CurrentDesc = next_desc;
+
+	/*
+	 * New descriptor available
+	 */
+	ETH->DMACTXDTPR = (uint32_t)&ETH_TX_Desc[next_desc];
+
+	return 1U;
+}
+
+/******************************************************************************************************
+ * 								RX DMA Descriptor / RX Path Configuration
  ******************************************************************************************************/
 
 /****************************************************************************
@@ -601,25 +856,38 @@ uint8_t ETH_ReadRawFrame(uint8_t **ppFrame, uint32_t *pLength){
 	desc3 = pDesc->DESC3;
 
 	/*
-	 * OWN = 1, DMA still owns Descriptor
+	 * OWN = 1, DMA still owns descriptor.
+	 * No complete frame is available yet.
 	 */
-	if((desc3 & ETH_RDES3_OWN) != 0U) return 0U;
+	if ((desc3 & ETH_RDES3_OWN) != 0U){
+		return 0U;
+	}
 
 	/*
-	 * OWN = 0, CPU owns descriptor
+	 * OWN = 0, CPU owns descriptor.
+	 * If descriptor has error, do not leave it stuck in CPU ownership.
 	 */
-	if((desc3 & ETH_RDES3_WB_ES) != 0U) return 0U;
+	if ((desc3 & ETH_RDES3_WB_ES) != 0U){
+		ETH_ReleaseRXDescriptor();
+		return 0U;
+	}
 
 	/*
-	 * DEBUG MODE:
-	 * If OWN became 0, we return 1 immediately.
-	 * Do not reject because of ES/FD/LD yet.
+	 * Optional but recommended:
+	 * accept only complete frames.
+	 * FD = first descriptor, LD = last descriptor.
+	 * For your simple single-buffer RX design, both should be set.
 	 */
+	if (((desc3 & ETH_RDES3_WB_FD) == 0U) ||
+	    ((desc3 & ETH_RDES3_WB_LD) == 0U)){
+		ETH_ReleaseRXDescriptor();
+		return 0U;
+	}
+
 	*pLength = (desc3 & ETH_RDES3_WB_PL_MASK);
 	*ppFrame = &ETH_RX_Buffers[ETH_RX_CurrentDesc][0];
 
 	return 1U;
-
 }
 
 /****************************************************************************
@@ -673,146 +941,7 @@ void ETH_ReleaseRXDescriptor(void){
 
 }
 
-/******************************************************************************************************
- * 								UDP / IPv4 Parser Helper Functions
- ******************************************************************************************************/
-/****************************************************************************
- * @fn				- ETH_FrameTypeCheck
- *
- * @brief			- This function checks and returns the EtherType field of
- * 					  a raw Ethernet frame
- *
- * @param[in]		- pointer to raw Ethernet frame buffer
- * @param[in]		- raw Ethernet frame length
- * @param[in]		-
- *
- * @return			- EtherType value, 0 if frame is invalid
- *
- * @Note			- EtherType is located at byte 12 and byte 13 of the
- * 					  Ethernet frame.
- * 					- Example values:
- * 					  0x0800 = IPv4
- * 					  0x0806 = ARP
- * 					  0x86DD = IPv6
- *
- */
-uint16_t ETH_FrameTypeCheck(uint8_t *pFrame, uint32_t FrameLength){
-	uint16_t ethertype;
 
-	if(pFrame == 0U) return 0U;
-
-	/*
-	 * Ethernet header length is 14 bytes
-	 *
-	 * Ethertype is located at byte 12 and byte 13
-	 */
-	if(FrameLength < ETH_HEADER_LEN) return 0U;
-
-	ethertype = ((uint16_t)pFrame[12] << 8U) | pFrame[13];
-
-	return ethertype;
-}
-
-/****************************************************************************
- * @fn				- ETH_GetUDPPayload
- *
- * @brief			- This function extracts UDP payload pointer and payload
- * 					  length from a raw Ethernet frame
- *
- * @param[in]		- pointer to raw Ethernet frame buffer
- * @param[in]		- raw Ethernet frame length
- * @param[in]		- expected UDP destination port
- * @param[in]		- pointer to payload pointer variable
- * @param[in]		- pointer to payload length variable
- *
- * @return			- 1 if valid UDP payload is found, 0 otherwise
- *
- * @Note			- This function checks IPv4, UDP protocol and destination port.
- * 					- UDP payload is not null-terminated.
- *					- User must use returned payload length.
- *
- */
-uint8_t ETH_GetUDPPayload(uint8_t *pFrame, uint32_t FrameLength, uint16_t ExpectedDestPort, uint8_t **ppPayload, uint32_t *pPayloadLength){
-	uint32_t ethertype;
-
-	uint8_t ip_headler_len;
-	uint8_t ip_protocol;
-
-	uint32_t udp_header_offset;
-	uint32_t udp_payload_offset;
-
-	uint16_t udp_dest_port;
-	uint16_t udp_len;
-
-	if((pFrame == 0) || (ppPayload == 0) || (pPayloadLength) == 0) return 0U;
-
-	*ppPayload = 0;
-	*pPayloadLength = 0U;
-
-	/*
-	 * Check ethernet frame type
-	 */
-	ethertype = ETH_FrameTypeCheck(pFrame, FrameLength);
-
-	if(ethertype != ETH_TYPE_IPV4) return 0U;
-
-	/*
-	 * Minimum Ethernet + IPv4 + UDP header length check
-	 */
-	if(FrameLength < (ETH_HEADER_LEN + 20U + ETH_UDP_HEADER_LEN)) return 0U;
-
-	/*
-	 * IPv4 Header starts after Ethernet Header
-	 *
-	 * pFrame[14] example:
-	 * 0x45 -> Version = 4, IHL = 5
-	 */
-	ip_headler_len = (pFrame[ETH_HEADER_LEN] & 0x0FU) * 4U;
-
-	if(ip_headler_len < 20U) return 0U;
-
-	if(FrameLength < (ETH_HEADER_LEN + ip_headler_len + ETH_UDP_HEADER_LEN)) return 0U;
-
-	/*
-	 * IPv4 protocol field is at offset 9 inside IPv4 Header
-	 *
-	 * UDP = 17
-	 */
-	ip_protocol = pFrame[ETH_HEADER_LEN + 9U];
-
-	if(ip_protocol != ETH_IP_PROTOCOL_UDP) return 0U;
-
-	/*
-	 * UDP header starts after ethernet header + IPv4 header
-	 */
-	udp_header_offset = ETH_HEADER_LEN + ip_headler_len;
-
-	/*
-	 * UDP Destionation Port is byte 2-3 inside UDP Header
-	 */
-	udp_dest_port = ((uint16_t)pFrame[udp_header_offset + 2U] << 8U) |
-			  	  	 pFrame[udp_header_offset + 3U];
-
-	if(udp_dest_port != ExpectedDestPort) return 0U;
-
-	/*
-	 * UDP Lenght is byte 4-5 inside udp header
-	 */
-	udp_len = ((uint16_t)pFrame[udp_header_offset + 4U] << 8)	|
-			   pFrame[udp_header_offset + 5U];
-
-	if(udp_len < ETH_UDP_HEADER_LEN) return 0U;
-
-	udp_payload_offset = udp_header_offset + ETH_UDP_HEADER_LEN;
-
-	//Overflow check
-	if((udp_payload_offset + (udp_len - ETH_UDP_HEADER_LEN)) > FrameLength) return 0U;
-
-	*ppPayload = &pFrame[udp_payload_offset];
-	*pPayloadLength = (uint32_t)(udp_len - ETH_UDP_HEADER_LEN);
-
-	return 1U;
-}
 
 /******************************************************************************************************
  * 								PHY / MDIO Register Access

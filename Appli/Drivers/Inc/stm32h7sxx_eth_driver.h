@@ -71,10 +71,13 @@
 
 /*
  * @ETH_DMA_CONFIGURATION
- * Ethernet RX DMA descriptor and buffer configuration macros
+ * Ethernet RX/TX DMA descriptor and buffer configuration macros
  */
-#define ETH_RX_DESC_CNT					4U
-#define ETH_RX_BUF_SIZE					1536U
+#define ETH_RX_DESC_CNT                 4U
+#define ETH_RX_BUF_SIZE                 1536U
+
+#define ETH_TX_DESC_CNT                 4U
+#define ETH_TX_BUF_SIZE                 1536U
 
 /*
  * Ethernet DMA descriptor
@@ -94,21 +97,10 @@ typedef struct{
  */
 #define ETH_MAC_ADDR_LEN				6U
 
-/*
- * @ETH_PROTOCOL_TYPES
- * Ethernet / IP protocol selection macros (Ethertypes in IEEE 802.3 Standard)
- */
-#define ETH_TYPE_IPV4					0x0800U
-#define ETH_TYPE_ARP					0x0806U
+#define ETH_CACHE_LINE_SIZE             32U
 
-#define ETH_IP_PROTOCOL_UDP				17U
-
-/*
- * @ETH_HEADER_LENGTHS
- * Header length macros
- */
-#define ETH_HEADER_LEN					14U
-#define ETH_UDP_HEADER_LEN				8U
+#define ETH_ALIGN_DOWN(addr)            ((addr) & ~(ETH_CACHE_LINE_SIZE - 1U))
+#define ETH_ALIGN_UP(size)              (((size) + ETH_CACHE_LINE_SIZE - 1U) & ~(ETH_CACHE_LINE_SIZE - 1U))
 
 /******************************************************************************************************
  * 								APIs Supported by This Driver
@@ -131,7 +123,7 @@ void ETH_MPU_ConfigNonCacheable(void);
 /*
  * MAC Configuration
  */
-void ETH_SetMACAddress(uint8_t *pMACAddr);
+void ETH_SetMACAddress(const uint8_t *pMACAddr);
 void ETH_MAC_FilterConfig(uint32_t Value, uint32_t FilterMask);
 void ETH_MAC_OPModeConfig(uint32_t Value, uint32_t ModeMask);
 
@@ -139,21 +131,24 @@ void ETH_MAC_OPModeConfig(uint32_t Value, uint32_t ModeMask);
  * MTL Configuration
  */
 void ETH_MTL_RXQueueConfig(uint32_t Value, uint32_t ModeMask);
+void ETH_MTL_TXQueueConfig(uint32_t Value, uint32_t ModeMask);
 
 /*
- * DMA Descriptor / RX Path Configuration
+ * DMA TX Descriptor / TX Path Configuration
+ */
+void ETH_TXDesc_Init(void);
+void ETH_DMA_TXConfig(void);
+void ETH_DMA_TXStart(void);
+uint8_t ETH_SendRawFrame(const uint8_t *pFrame, uint32_t FrameLength);
+
+/*
+ * DMA RX Descriptor / RX Path Configuration
  */
 void ETH_RXDesc_Init(void);
 void ETH_DMA_RXConfig(void);
 void ETH_DMA_RXStart(void);
 uint8_t ETH_ReadRawFrame(uint8_t **ppFrame, uint32_t *pLength);
 void ETH_ReleaseRXDescriptor(void);
-
-/*
- * UDP Parser Functions
- */
-uint16_t ETH_FrameTypeCheck(uint8_t *pFrame, uint32_t FrameLength);
-uint8_t ETH_GetUDPPayload(uint8_t *pFrame, uint32_t FrameLength, uint16_t ExpectedDestPort, uint8_t **ppPayload, uint32_t *pPayloadLength);
 
 /*
  * PHY / MDIO Register Access
@@ -171,7 +166,7 @@ uint8_t ETH_PHY_WaitForLink(uint8_t PHYAddr, uint32_t Timeout);
 uint8_t ETH_PHY_WaitAutoNegotiation(uint8_t PHYAddr, uint32_t Timeout);
 
 /*
- * Debug Helper Functions
+ * Debug Helper and Test Functions
  */
 ETH_DMADesc_t* ETH_GetRXDescBase(void);
 uint8_t* ETH_GetRXBufferBase(void);

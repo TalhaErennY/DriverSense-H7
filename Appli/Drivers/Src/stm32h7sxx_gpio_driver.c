@@ -31,15 +31,14 @@ void GPIO_PeriClockControl(GPIO_RegDef_t *pGPIOx, uint8_t ENorDI){
 	uint32_t port_index;
 
 	if((gpio_addr >= GPIOA_BASEADDR) && (gpio_addr <= GPIOH_BASEADDR)){
-		if(((gpio_addr - GPIOA_BASEADDR) % 0x400UL) != 0U)
-		{
+		if(((gpio_addr - GPIOA_BASEADDR) % 0x400UL) != 0U){
 		    return;
 		}
 
 		port_index = (gpio_addr - GPIOA_BASEADDR) / 0x400UL;
 	} else if ((gpio_addr >= GPIOM_BASEADDR) && (gpio_addr <= GPIOP_BASEADDR)){
-	    if(((gpio_addr - GPIOM_BASEADDR) % 0x400UL) != 0U)
-	    {
+
+		if(((gpio_addr - GPIOM_BASEADDR) % 0x400UL) != 0U){
 	        return;
 	    }
 
@@ -97,7 +96,7 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle){
 		temp = (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << ( 2U * pin));
 		pGPIOHandle->pGPIOx->MODER &= ~(3U << (2U * pin));
 		pGPIOHandle->pGPIOx->MODER |= temp;
-	}else{
+	} else{
 		//interrupt modes
 
 		//Automatically Changing the mode to input mode for interrupt handling
@@ -133,15 +132,13 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle){
 		uint32_t port_index;
 
 		if((gpio_addr >= GPIOA_BASEADDR) && (gpio_addr <= GPIOH_BASEADDR)){
-			if(((gpio_addr - GPIOA_BASEADDR) % 0x400UL) != 0U)
-			{
+			if(((gpio_addr - GPIOA_BASEADDR) % 0x400UL) != 0U){
 				return;
 			}
 
 			port_index = (gpio_addr - GPIOA_BASEADDR) / 0x400UL;
 		} else if ((gpio_addr >= GPIOM_BASEADDR) && (gpio_addr <= GPIOP_BASEADDR)){
-		    if(((gpio_addr - GPIOM_BASEADDR) % 0x400UL) != 0U)
-		    {
+		    if(((gpio_addr - GPIOM_BASEADDR) % 0x400UL) != 0U){
 		        return;
 		    }
 
@@ -218,15 +215,13 @@ void GPIO_DeInit(GPIO_RegDef_t *pGPIOx){
 
 	//GPIOA-GPIOH and GPIOM-GPIOP converted to AHB4RSTR/AHB4ENR bit positions
 	if((gpio_addr >= GPIOA_BASEADDR) && (gpio_addr <= GPIOH_BASEADDR)){
-		if(((gpio_addr - GPIOA_BASEADDR) % 0x400UL) != 0U)
-		{
+		if(((gpio_addr - GPIOA_BASEADDR) % 0x400UL) != 0U){
 		    return;
 		}
 
 		port_index = (gpio_addr - GPIOA_BASEADDR) / 0x400UL;
 	} else if ((gpio_addr >= GPIOM_BASEADDR) && (gpio_addr <= GPIOP_BASEADDR)){
-	    if(((gpio_addr - GPIOM_BASEADDR) % 0x400UL) != 0U)
-	    {
+	    if(((gpio_addr - GPIOM_BASEADDR) % 0x400UL) != 0U){
 	        return;
 	    }
 
@@ -305,9 +300,9 @@ void GPIO_WriteToOutputPin(GPIO_RegDef_t *pGPIOx, uint8_t PinNumber, uint8_t Val
 
 	if(Value == GPIO_PIN_SET){
 		pGPIOx->BSRR = (1UL << PinNumber);
-	}else if (Value == GPIO_PIN_RESET){
+	} else if(Value == GPIO_PIN_RESET){
 		pGPIOx->BSRR = (1UL << (PinNumber + 16U));
-	}else{
+	} else{
 		//error
 	}
 }
@@ -376,10 +371,10 @@ void GPIO_IRQInterruptConfig(uint8_t IRQNumber, uint8_t ENorDI){
 	if(ENorDI == ENABLE){
 		//Program ISERx Register
 		NVIC_ISER[IRQNumber / 32U] = (1U << (IRQNumber % 32U));
-	} else if (ENorDI == DISABLE){
+	} else if(ENorDI == DISABLE){
 		//Program ICERx Register
 		NVIC_ICER[IRQNumber / 32U] = (1U << (IRQNumber % 32U));
-	} else {
+	} else{
 		//Invalid value for ENABLE or DISABLE
 		return;
 	}

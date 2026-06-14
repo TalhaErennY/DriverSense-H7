@@ -36,9 +36,13 @@ int main(void){
 	//Test_006_ETH_DMA_Memory_Init();
 	//Test_007_ETH_Raw_Frame_RX();
 	//Test_008_ETH_UDP_Payload();
+	//Test_009_ETH_Frame_Parse();
+	//Test_010_ETH_ARP_Parse();
 
 	/*Forza Test*/
-	Test_000_ETH_Forza_Test();
+	//Test_000_ETH_Forza_Test();
+	Test_011_ETH_Raw_Frame_TX();
+
 
     while(1);
 

@@ -42,17 +42,17 @@ void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t ENorDI){
     if (ENorDI == ENABLE){
         if (pI2Cx == I2C1) {
             I2C1_PCLK_EN();
-        } else if (pI2Cx == I2C2) {
+        } else if(pI2Cx == I2C2) {
             I2C2_PCLK_EN();
-        } else if (pI2Cx == I2C3) {
+        } else if(pI2Cx == I2C3) {
             I2C3_PCLK_EN();
         }
     }else if(ENorDI == DISABLE) {
-        if (pI2Cx == I2C1) {
+        if(pI2Cx == I2C1) {
             I2C1_PCLK_DI();
-        } else if (pI2Cx == I2C2) {
+        } else if(pI2Cx == I2C2) {
             I2C2_PCLK_DI();
-        } else if (pI2Cx == I2C3) {
+        } else if(pI2Cx == I2C3) {
             I2C3_PCLK_DI();
         }
     } else{
@@ -87,7 +87,7 @@ void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t ENorDI){
 void I2C_Init(I2C_Handle_t *pI2CHandle){
     uint32_t tempreg = 0;
 
-    if ((pI2CHandle == NULL) || (pI2CHandle->pI2Cx == NULL)){
+    if((pI2CHandle == NULL) || (pI2CHandle->pI2Cx == NULL)){
         // Invalid handle
         return;
     }
@@ -119,7 +119,7 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
     pI2CHandle->pI2Cx->TIMINGR = pI2CHandle->I2C_Config.I2C_Timing;
 
     //Configure NOSTRETCH
-    if (pI2CHandle->I2C_Config.I2C_NoStretchMode == I2C_STRETCH_DISABLE){
+    if(pI2CHandle->I2C_Config.I2C_NoStretchMode == I2C_STRETCH_DISABLE){
 		pI2CHandle->pI2Cx->CR1 |= (1U << I2C_CR1_NOSTRETCH);
 	} else{
 		pI2CHandle->pI2Cx->CR1 &= ~(1U << I2C_CR1_NOSTRETCH);
@@ -144,8 +144,8 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
      */
     pI2CHandle->pI2Cx->OAR1 = 0U;
 
-    if (pI2CHandle->I2C_Config.I2C_DeviceAddress != 0U){
-        if (pI2CHandle->I2C_Config.I2C_AddressingMode == I2C_ADDRMODE_7BIT){
+    if(pI2CHandle->I2C_Config.I2C_DeviceAddress != 0U){
+        if(pI2CHandle->I2C_Config.I2C_AddressingMode == I2C_ADDRMODE_7BIT){
         	// 7-bit own address mode
             tempreg |= ((uint32_t)(pI2CHandle->I2C_Config.I2C_DeviceAddress & 0x7FU) << 1U);
         } else{
@@ -181,15 +181,15 @@ void I2C_Init(I2C_Handle_t *pI2CHandle){
  *
  */
 void I2C_DeInit(I2C_RegDef_t *pI2Cx) {
-	if (pI2Cx == I2C1){
+	if(pI2Cx == I2C1){
 		//Reset all I2C1 registers
 		RCC->APB1RSTR1 |=  (1U << 21);
         RCC->APB1RSTR1 &= ~(1U << 21);
-    } else if (pI2Cx == I2C2){
+    } else if(pI2Cx == I2C2){
     	//Reset all I2C2 registers
         RCC->APB1RSTR1 |=  (1U << 22);
         RCC->APB1RSTR1 &= ~(1U << 22);
-    } else if (pI2Cx == I2C3){
+    } else if(pI2Cx == I2C3){
     	//Reset all I2C3 registers
         RCC->APB1RSTR1 |=  (1U << 23);
         RCC->APB1RSTR1 &= ~(1U << 23);
@@ -248,7 +248,7 @@ uint8_t I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_
 	uint8_t status;
 
 	//Argument check
-    if ((pI2CHandle == NULL) || (pI2CHandle->pI2Cx == NULL) || (pTxBuffer == NULL) || (Len == 0U)){
+    if((pI2CHandle == NULL) || (pI2CHandle->pI2Cx == NULL) || (pTxBuffer == NULL) || (Len == 0U)){
         return I2C_ERROR_INVALID_ARG;
     }
 

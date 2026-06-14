@@ -2182,6 +2182,37 @@ typedef struct{
 #define GFXTIM_PCLK_DI()                (RCC->APB5ENR &= ~(1UL << 4U))
 
 /* -------------------------------------------------------------------------- */
+/* Cortex-M7 FPU definitions                                                  */
+/* -------------------------------------------------------------------------- */
+#define SCB_CPACR_ADDR                 (0xE000ED88UL)
+#define SCB_CPACR                      (*(__vo uint32_t *)SCB_CPACR_ADDR)
+
+#define SCB_DCCMVAC_ADDR                (0xE000EF68UL)
+#define SCB_DCCMVAC                     (*((__vo uint32_t *)SCB_DCCMVAC_ADDR))
+
+/*
+ * FPU system registers
+ */
+#define FPU_BASEADDR                   (0xE000EF34UL)
+
+typedef struct{
+	__vo uint32_t FPCCR;      /* Floating-point context control register */
+	__vo uint32_t FPCAR;      /* Floating-point context address register */
+	__vo uint32_t FPDSCR;     /* Floating-point default status control register */
+} FPU_RegDef_t;
+
+#define FPU                            ((FPU_RegDef_t *)FPU_BASEADDR)
+
+/*
+ * Enable CP10 and CP11 full access.
+ */
+#define FPU_ENABLE()                   do {                           \
+	                                      SCB_CPACR |= (0xFU << 20U); \
+	                                      __asm volatile ("dsb");     \
+	                                      __asm volatile ("isb");     \
+                                      } while(0)
+
+/* -------------------------------------------------------------------------- */
 /* Cortex-M7 MPU definitions                                                  */
 /* -------------------------------------------------------------------------- */
 #define MPU_BASEADDR					(0xE000ED90UL)
@@ -2278,6 +2309,23 @@ typedef struct{
 /* ETH DMA Descriptor Macros                                                  */
 /* -------------------------------------------------------------------------- */
 /*
+ * TX descriptor read-format TDES2 bits
+ */
+#define ETH_TDES2_IOC                   (1UL << 31)
+#define ETH_TDES2_B1L_MASK              (0x3FFFUL)
+
+/*
+ * Ethernet TX Descriptor TDES3 bit selection macros
+ */
+#define ETH_TDES3_FL_MASK               0x00007FFFUL
+#define ETH_TDES3_CIC                   16U
+#define ETH_TDES3_CIC_MASK              (0x3UL << ETH_TDES3_CIC)
+#define ETH_TDES3_LD                    (1UL << 28)
+#define ETH_TDES3_FD                    (1UL << 29)
+#define ETH_TDES3_CTXT                  (1UL << 30)
+#define ETH_TDES3_OWN                   (1UL << 31)
+
+/*
  * RX descriptor read-format RDES3 bits.
  *
  * These are written by software before giving the descriptor to DMA.
@@ -2298,6 +2346,7 @@ typedef struct{
 #define ETH_RDES3_WB_LD					(1UL << 28)		//When this bit is set, it indicates that the buffers to which this descriptor is pointing are the last buffers of the packet.
 #define ETH_RDES3_WB_ES					(1UL << 15)
 #define ETH_RDES3_WB_PL_MASK			(0x7FFFUL)		//Bits between [0:14]
+
 /*
  * Notes on: ETH_RDES3_WB_ES:
  *
@@ -2413,19 +2462,28 @@ typedef struct{
 #define ETH_MTLRXQOMR_RSF				5U		// Receive queue store and forward
 #define ETH_MTLRXQOMR_RSF_MSK			(1UL << ETH_MTLRXQOMR_RSF)
 
+/*
+ * Bit position definitions for ETH_MTLTXQOMR: Tx queue operating mode register
+ */
+#define ETH_MTLTXQOMR_FTQ				0U		// Flust trnsmit queue
+#define ETH_MTLTXQOMR_TSF				1U		// Transmit store and forward
+
+#define ETH_MTLTXQOMR_FTQ_MSK			(1UL << ETH_MTLTXQOMR_FTQ)
+#define ETH_MTLTXQOMR_TSF_MSK			(1UL << ETH_MTLTXQOMR_TSF)
 
 /* -------------------------------------------------------------------------- */
 /* ETH DMA Channel bit position macros                                        */
 /* -------------------------------------------------------------------------- */
 /*
- * Bit position definitions for ETH_DMACRXCR: Channel receive control register
+ * Bit Position definitions for ETH_DMACTXCR: Channel transmit control register
+ */
+#define ETH_DMACTXCR_ST					0U		// Start or stop receive
+
+/*
+ * Bit position definitions/masks for ETH_DMACRXCR: Channel receive control register
  */
 #define ETH_DMACRXCR_SR					0U		// Start or stop receive
 #define ETH_DMACRXCR_RBSZ				1U		// Receive buffer size, bits [14:1]
-
-/*
- * Bit masks for ETH_DMACRXCR
- */
 #define ETH_DMACRXCR_RBSZ_MASK			(0x3FFFUL << ETH_DMACRXCR_RBSZ)
 
 

@@ -215,8 +215,7 @@ void Test_008_ETH_UDP_Payload(void){
 
 			dbg_udp_available = udp_available;
 
-			if(udp_available == 1U)
-			{
+			if(udp_available == 1U){
 				dbg_payload_addr = (uint32_t)payload;
 				dbg_payload_length = payload_length;
 

@@ -46,6 +46,7 @@ MEMORY
 {
   RAM         (xrw) : ORIGIN = 0x24000000,  LENGTH = 0x40000
   ETH_DMA_RAM (xrw)	: ORIGIN = 0x24040000,	LENGTH = 0x4000
+  ETH_TX_RAM  (xrw) : ORIGIN = 0x24044000,  LENGTH = 0x4000
   FLASH       (rx)  : ORIGIN = 0x8000000,   LENGTH = 0x10000
 }
 
@@ -176,6 +177,17 @@ SECTIONS
    . = ALIGN(32);
    __ETH_DMA_END = .;
    } > ETH_DMA_RAM
+
+  /*Eth tx buffer*/
+  .eth_tx_buffer (NOLOAD) :
+  {
+   . = ALIGN(32);
+   __ETH_TX_BUFFER_START = .;
+   KEEP(*(.eth_tx_buffer))
+   KEEP(*(.eth_tx_buffer*))
+   . = ALIGN(32);
+   __ETH_TX_BUFFER_END = .;
+   } > ETH_TX_RAM
    
   /* User_heap_stack section, used to check that there is enough "RAM" Ram  type memory left */
   ._user_heap_stack :

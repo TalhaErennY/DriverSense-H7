@@ -50,11 +50,15 @@ __RAM_SIZE     = 0x40000;
 __ETH_DMA_RAM_BEGIN    = 0x24040000;
 __ETH_DMA_RAM_SIZE     = 0x4000;
 
+__ETH_TX_RAM_BEGIN	   = 0x24044000;
+__ETH_TX_RAM_SIZE	   = 0x4000;
+
 /* Memories definition */
 MEMORY
 {
   RAM       	(xrw) : ORIGIN = __RAM_BEGIN,    LENGTH = __RAM_SIZE
   ETH_DMA_RAM 	(xrw) : ORIGIN = __ETH_DMA_RAM_BEGIN, LENGTH = __ETH_DMA_RAM_SIZE
+  ETH_TX_RAM    (xrw) : ORIGIN = __ETH_TX_RAM_BEGIN, LENGTH = __ETH_TX_RAM_SIZE
 
   ITCM      (xrw) : ORIGIN = 0x00000000,    LENGTH = 0x00010000
   DTCM       (rw) : ORIGIN = 0x20000000,    LENGTH = 0x00010000
@@ -188,7 +192,18 @@ SECTIONS
   	. = ALIGN(32);
   	__ETH_DMA_END = .;
   } >ETH_DMA_RAM
-
+	
+	
+  .eth_tx_buffer (NOLOAD) :
+  {
+    . = ALIGN(32);
+    __ETH_TX_BUFFER_START = .;
+    KEEP(*(.eth_tx_buffer))
+    KEEP(*(.eth_tx_buffer*))
+    . = ALIGN(32);
+    __ETH_TX_BUFFER_END = .;
+  } >ETH_TX_RAM
+  
   /* User_heap_stack section, used to check that there is enough Ram  type memory left */
   ._user_heap_stack :
   {
