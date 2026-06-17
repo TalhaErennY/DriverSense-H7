@@ -21,6 +21,7 @@ void Test_008_ETH_UDP_Payload(void);
 void Test_009_ETH_Frame_Parse(void);
 void Test_010_ETH_ARP_Parse(void);
 void Test_011_ETH_Raw_Frame_TX(void);
+void Test_012_ETH_ICMP_Echo(void);
 
 void Test_000_ETH_Forza_Test(void);
 

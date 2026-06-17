@@ -411,6 +411,254 @@ uint32_t ETHNET_BuildARPReply(uint8_t *pOutFrame, const uint8_t myMAC[ETHNET_MAC
 
 }
 
+/****************************************************************************
+ * @fn				- ETHNET_BuildICMPEchoReply
+ *
+ * @brief			- This function builds an Ethernet II IPv4 ICMP echo
+ * 					  reply frame from an incoming ICMP echo request
+ *
+ * @param[in]		- pointer to output Ethernet frame buffer
+ * @param[in]		- pointer to incoming Ethernet frame buffer
+ * @param[in]		- incoming Ethernet frame length
+ * @param[in]		- local MAC address
+ * @param[in]		- local IPv4 address
+ *
+ * @return			- ICMP echo reply Ethernet frame length, 0 if build fails
+ *
+ * @Note			- This function supports IPv4 packets without IP options.
+ * 					- Ethernet, IPv4 and ICMP checksums are handled here.
+ *					- FCS/CRC is added by Ethernet MAC hardware.
+ *
+ */
+uint32_t ETHNET_BuildICMPEchoReply(uint8_t *pOut, uint32_t OutSize, const uint8_t *pRequest, uint32_t RequestLen, const uint8_t myMAC[ETHNET_MAC_ADDR_LEN], const uint8_t myIP[ETHNET_IPV4_ADDR_LEN]){
+	uint32_t ip_offset;
+	uint32_t icmp_offset;
+	uint32_t frame_copy_len;
+	uint32_t reply_len;
+
+	uint16_t ip_total_len;
+
+	uint8_t ip_header_len;
+	uint8_t ip_ver;
+	uint8_t ip_protocol;
+
+	if((pOut == 0U) || (pRequest == 0U) || (myMAC == 0U) || (myIP == 0U)) return 0U;
+	if(OutSize < 60U) return 0U;
+	if(RequestLen < (ETHNET_HEADER_LEN + ETHNET_IPV4_MIN_HEADER_LEN + ETHNET_ICMP_HEADER_LEN)) return 0U;
+
+	/*
+	 * IPv4 header starts after Ethernet header.
+	 */
+	ip_offset = ETHNET_HEADER_LEN;
+
+	ip_ver = (uint8_t)(pRequest[ip_offset + ETHNET_IPV4_VER_IHL_OFFSET] >> 4U);
+	ip_header_len = (uint8_t)((pRequest[ip_offset + ETHNET_IPV4_VER_IHL_OFFSET] & 0x0FU) * 4U);
+
+	if(ip_ver != 4U) return 0U;
+
+	/*
+	 * For now, only IPv4 header without options is supported.
+	 */
+	if(ip_header_len != ETHNET_IPV4_MIN_HEADER_LEN) return 0U;
+
+	ip_total_len = ReadU16BE(pRequest, ip_offset + ETHNET_IPV4_TOTAL_LEN_OFFSET);
+
+	if(ip_total_len < (ETHNET_IPV4_MIN_HEADER_LEN + ETHNET_ICMP_HEADER_LEN)) return 0U;
+
+	/*
+	 * Check whether received Ethernet frame really contains complete IPv4 packet.
+	 */
+	if((ETHNET_HEADER_LEN + (uint32_t)ip_total_len) > RequestLen) return 0U;
+
+	ip_protocol = pRequest[ip_offset + ETHNET_IPV4_PROTOCOL_OFFSET];
+
+	if(ip_protocol != ETHNET_IPV4_PROTOCOL_ICMP) return 0U;
+
+	/*
+	 * ICMP header starts after IPv4 header.
+	 */
+	icmp_offset = ip_offset + ip_header_len;
+
+	if((icmp_offset + ETHNET_ICMP_HEADER_LEN) > RequestLen) return 0U;
+
+	if(pRequest[icmp_offset + ETHNET_ICMP_TYPE_OFFSET] != ETHNET_ICMP_TYPE_ECHO_REQUEST) return 0U;
+	if(pRequest[icmp_offset + ETHNET_ICMP_CODE_OFFSET] != ETHNET_ICMP_CODE_ECHO) return 0U;
+
+	/*
+	 * Ethernet frame length without FCS.
+	 */
+	frame_copy_len = ETHNET_HEADER_LEN + (uint32_t)ip_total_len;
+	reply_len = frame_copy_len;
+
+	if(reply_len < 60U){
+		reply_len = 60U;
+	}
+
+	if(reply_len > OutSize) return 0U;
+
+	/*
+	 * Clear output frame.
+	 */
+	for(uint32_t i = 0U; i < reply_len; i++){
+		pOut[i] = 0U;
+	}
+
+	/*
+	 * Copy request frame first.
+	 * Then modify Ethernet, IPv4 and ICMP fields.
+	 */
+	for(uint32_t i = 0U; i < frame_copy_len; i++){
+		pOut[i] = pRequest[i];
+	}
+
+	/*
+	 * Ethernet Header
+	 *
+	 * Dst MAC -> Request Src MAC
+	 * Src MAC -> Local MAC
+	 * EtherType -> IPv4
+	 */
+	for(uint8_t i = 0U; i < ETHNET_MAC_ADDR_LEN; i++){
+		pOut[ETHNET_DST_MAC_OFFSET + i] = pRequest[ETHNET_SRC_MAC_OFFSET + i];
+		pOut[ETHNET_SRC_MAC_OFFSET + i] = myMAC[i];
+	}
+
+	WriteU16BE(pOut, ETHNET_TYPE_OFFSET, ETHNET_ETHERTYPE_IPV4);
+
+	/*
+	 * IPv4 Header
+	 *
+	 * Dst IP -> Request Src IP
+	 * Src IP -> Local IP
+	 */
+	for(uint8_t i = 0U; i < ETHNET_IPV4_ADDR_LEN; i++){
+		pOut[ip_offset + ETHNET_IPV4_DST_ADDR_OFFSET + i] = pRequest[ip_offset + ETHNET_IPV4_SRC_ADDR_OFFSET + i];
+		pOut[ip_offset + ETHNET_IPV4_SRC_ADDR_OFFSET + i] = myIP[i];
+	}
+
+	/*
+	 * TTL can be reset for generated reply.
+	 */
+	pOut[ip_offset + ETHNET_IPV4_TTL_OFFSET] = 64U;
+
+	/*
+	 * Recalculate IPv4 header checksum.
+	 */
+	pOut[ip_offset + ETHNET_IPV4_CHECKSUM_OFFSET] = 0U;
+	pOut[ip_offset + ETHNET_IPV4_CHECKSUM_OFFSET + 1U] = 0U;
+
+	WriteU16BE(pOut, (ip_offset + ETHNET_IPV4_CHECKSUM_OFFSET),	ETHNET_CalcCheckSum16(&pOut[ip_offset], ip_header_len));
+
+	/*
+	 * ICMP Header
+	 *
+	 * Type = Echo Reply
+	 * Code = 0
+	 * Identifier, sequence number and payload are kept from request.
+	 */
+	pOut[icmp_offset + ETHNET_ICMP_TYPE_OFFSET] = ETHNET_ICMP_TYPE_ECHO_REPLY;
+	pOut[icmp_offset + ETHNET_ICMP_CODE_OFFSET] = ETHNET_ICMP_CODE_ECHO;
+
+	pOut[icmp_offset + ETHNET_ICMP_CHECKSUM_OFFSET] = 0U;
+	pOut[icmp_offset + ETHNET_ICMP_CHECKSUM_OFFSET + 1U] = 0U;
+
+	WriteU16BE(pOut, (icmp_offset + ETHNET_ICMP_CHECKSUM_OFFSET), ETHNET_CalcCheckSum16(&pOut[icmp_offset], (uint32_t)ip_total_len - ip_header_len));
+
+	return reply_len;
+}
+
+/****************************************************************************
+ * @fn				- ETHNET_IsIPv4PacketForIP
+ *
+ * @brief			- This function checks whether an Ethernet frame contains
+ * 					  an IPv4 packet addressed to the given IPv4 address
+ *
+ * @param[in]		- pointer to raw Ethernet frame buffer
+ * @param[in]		- raw Ethernet frame length
+ * @param[in]		- local IPv4 address
+ *
+ * @return			- 1 if IPv4 destination address matches, 0 otherwise
+ *
+ * @Note			- This function checks only Ethernet II + IPv4 destination IP.
+ * 					- IPv4 checksum validation can be added separately.
+ *					-
+ *
+ */
+uint8_t ETHNET_IsIPv4PacketForIP(const uint8_t *pFrame, uint32_t FrameLen, const uint8_t ip[ETHNET_IPV4_ADDR_LEN]){
+	uint16_t ethertype;
+	uint8_t ip_ver;
+	uint8_t ip_header_len;
+	uint32_t ip_offset;
+
+	if((pFrame == 0U) || (FrameLen == 0U) || (ip == 0U)) return 0U;
+	if(FrameLen < (ETHNET_HEADER_LEN + ETHNET_IPV4_MIN_HEADER_LEN)) return 0U;
+
+	ethertype = ETHNET_GetEtherType(pFrame, FrameLen);
+
+	if(ethertype != ETHNET_ETHERTYPE_IPV4) return 0U;
+
+	ip_offset = ETHNET_HEADER_LEN;
+
+	ip_ver = (uint8_t)(pFrame[ip_offset + ETHNET_IPV4_VER_IHL_OFFSET] >> 4U);
+	ip_header_len = (uint8_t)((pFrame[ip_offset + ETHNET_IPV4_VER_IHL_OFFSET] & 0x0FU) * 4U);
+
+	if(ip_ver != 4U) return 0U;
+	if(ip_header_len < ETHNET_IPV4_MIN_HEADER_LEN) return 0U;
+	if(FrameLen < (ETHNET_HEADER_LEN + ip_header_len)) return 0U;
+
+	for(uint8_t i = 0U; i < ETHNET_IPV4_ADDR_LEN; i++){
+		if(pFrame[ip_offset + ETHNET_IPV4_DST_ADDR_OFFSET + i] != ip[i]){
+			return 0U;
+		}
+	}
+
+	return 1U;
+
+}
+
+/****************************************************************************
+ * @fn				- ETHNET_CalcChecksum16
+ *
+ * @brief			- This function calculates the standard 16-bit one's
+ * 					  complement checksum
+ *
+ * @param[in]		- pointer to input data buffer
+ * @param[in]		- data length in bytes
+ * @param[in]		-
+ *
+ * @return			- calculated 16-bit checksum value
+ *
+ * @Note			- This checksum is used by IPv4 header and ICMP packets.
+ * 					- Checksum field must be cleared before calculation.
+ *					- Data is interpreted as big-endian 16-bit words.
+ *
+ */
+uint16_t ETHNET_CalcCheckSum16(const uint8_t * pData, uint32_t Len){
+	if((pData == 0) || (Len == 0)) return 0U;
+
+	uint32_t sum = 0U;
+	uint16_t word;
+
+	while(Len > 1U){
+		word = ((uint16_t)pData[0] << 8U) | ((uint16_t)pData[1]);
+		sum += word;
+
+		pData += 2U;
+		Len -= 2U;
+	}
+
+	if(Len > 0U){
+		word = ((uint16_t)pData[0] << 8U);
+		sum += word;
+	}
+
+	while((sum >> 16U) != 0U){
+		sum = (sum & 0xFFFFU) + (sum >> 16U);
+	}
+
+	return (uint16_t)(~sum);
+}
+
 /******************************************************************************************************
  * 								MAC Helper Functions
  ******************************************************************************************************/

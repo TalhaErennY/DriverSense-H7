@@ -1,7 +1,7 @@
 /*
- * 011_ETH_Raw_Frame_TX.c
+ * 012_ETH_ICMP_Echo.c
  *
- *  Created on: 14 Haz 2026
+ *  Created on: 17 Haz 2026
  *      Author: talha
  */
 
@@ -18,13 +18,6 @@
 //Custom IP/MAC
 uint8_t myIP[ETHNET_IPV4_ADDR_LEN] = {192U, 168U, 1U, 50U};
 uint8_t myMAC[ETHNET_MAC_ADDR_LEN] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
-
-uint8_t testFrame[60] = {
-	0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
-	0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U,
-	0x88U, 0xB5U,
-	'T', 'E', 'S', 'T'
-};
 
 //Debugger Variables
 volatile uint8_t  dbg_init_ok = 0U;
@@ -50,12 +43,16 @@ volatile uint32_t dbg_arp_for_me_count = 0U;
 volatile uint32_t dbg_arp_reply_sent_count = 0U;
 volatile uint32_t dbg_arp_reply_fail_count = 0U;
 
+volatile uint32_t dbg_icmp_request_count = 0U;
+volatile uint32_t dbg_icmp_reply_sent_count = 0U;
+volatile uint32_t dbg_icmp_reply_fail_count = 0U;
+
 volatile uint32_t dbg_udp_match_count = 0U;
 
 volatile uint32_t dbg_error_code = 0U;
 volatile uint32_t dbg_init_step = 0U;
 
-void Test_011_ETH_Raw_Frame_TX(void){
+void Test_012_ETH_ICMP_Echo(void){
 	uint8_t phy_addr = 0U;
 	uint8_t phy_found = 0U;
 	uint8_t eth_reset_ok = 0U;
@@ -74,6 +71,9 @@ void Test_011_ETH_Raw_Frame_TX(void){
 	uint8_t arp_reply_frame[64];
 	uint32_t arp_reply_len = 0U;
 
+	uint8_t icmp_reply_frame[ETH_TX_BUF_SIZE];
+	uint32_t icmp_reply_len = 0U;
+
 	/*
 	 * MPU Config
 	 */
@@ -89,7 +89,7 @@ void Test_011_ETH_Raw_Frame_TX(void){
 	ETH_SelectRMII();
 
 	/*
-	 * Software Rest
+	 * Software Reset
 	 */
 	dbg_init_step = 3U;
 	eth_reset_ok = ETH_SoftwareReset();
@@ -101,7 +101,7 @@ void Test_011_ETH_Raw_Frame_TX(void){
 	}
 
 	/*
-	 * PHY Link
+	 * PHY Address Scan
 	 */
 	dbg_init_step = 4U;
 	phy_found = ETH_PHY_FindAddress(&phy_addr);
@@ -138,7 +138,7 @@ void Test_011_ETH_Raw_Frame_TX(void){
 	ETH_SetMACAddress(myMAC);
 
 	/*
-	 * Descriptor init
+	 * Descriptor Init
 	 */
 	dbg_init_step = 7U;
 	ETH_RXDesc_Init();
@@ -149,31 +149,32 @@ void Test_011_ETH_Raw_Frame_TX(void){
 	 */
 	dbg_init_step = 8U;
 	ETH_MTL_RXQueueConfig(ETH_MTLRXQOMR_RSF_MSK, ETH_MTLRXQOMR_RSF_MSK);
-	ETH_MTL_TXQueueConfig(ETH_MTLTXQOMR_TSF_MSK, ETH_MTLTXQOMR_TSF_MSK);
+	ETH_MTL_TXQueueConfig(ETH_MTLTXQOMR_TSF_MSK | ETH_MTLTXQOMR_TXQEN_ENABLE, ETH_MTLTXQOMR_TSF_MSK | ETH_MTLTXQOMR_TXQEN_MSK);
 
 	/*
 	 * DMA TX/RX Config
 	 */
-	dbg_init_step = 81U;
+	dbg_init_step = 9U;
 	ETH_DMA_TXConfig();
 	ETH_DMA_RXConfig();
+
 	/*
 	 * Start DMA TX/RX
 	 */
-	dbg_init_step = 9U;
+	dbg_init_step = 10U;
 	ETH_DMA_RXStart();
 	ETH_DMA_TXStart();
 
 	/*
-	 * MAC Configuration
+	 * MAC Filter Configuration
 	 */
-	dbg_init_step = 10U;
+	dbg_init_step = 11U;
 	ETH_MAC_FilterConfig(ETH_MACPFR_PM_MSK, ETH_MACPFR_PM_MSK);
 
 	/*
 	 * Enable MAC TX/RX
 	 */
-	dbg_init_step = 11U;
+	dbg_init_step = 12U;
 	ETH_MAC_OPModeConfig(
 			ETH_MACCR_FES_MSK |
 			ETH_MACCR_DM_MSK  |
@@ -198,6 +199,9 @@ void Test_011_ETH_Raw_Frame_TX(void){
 		payload_length = 0U;
 		udp_available = 0U;
 
+		arp_reply_len = 0U;
+		icmp_reply_len = 0U;
+
 		frame_available = ETH_ReadRawFrame(&frame, &frame_length);
 		dbg_frame_available = frame_available;
 
@@ -205,18 +209,19 @@ void Test_011_ETH_Raw_Frame_TX(void){
 			dbg_frame_length = frame_length;
 
 			/*
-			 * Ethernet frame parse
+			 * Ethernet Frame Parse
 			 */
 			if(ETHNET_ParseEthernetFrame(frame, frame_length, &eth_frame) == 1U){
 				dbg_ethnet_parse_ok++;
 
 				if(eth_frame.frame_format == ETHNET_FRAME_ETHERNET_II){
 					/*
-					 * ARP
+					 * ARP Packet Handling
 					 */
 					if(eth_frame.ethertype == ETHNET_ETHERTYPE_ARP){
 						if(ETHNET_ParseARPPacket(eth_frame.payload, eth_frame.payload_len, &arp_packet) == 1U){
 							dbg_ethnet_arp_count++;
+
 							if(arp_packet.oper == ETHNET_ARP_OPER_REQUEST){
 								dbg_arp_request_count++;
 							} else if(arp_packet.oper == ETHNET_ARP_OPER_REPLY){
@@ -224,15 +229,20 @@ void Test_011_ETH_Raw_Frame_TX(void){
 							}
 
 							/*
-							 * Check ARP for myIP
+							 * Check ARP request for my IP
 							 */
 							if(ETHNET_IsARPRequestForIP(&arp_packet, myIP) == 1U){
 								dbg_arp_for_me_count++;
 
 								/*
-								 * Build ARP reply
+								 * Build ARP Reply
 								 */
-								arp_reply_len = ETHNET_BuildARPReply(arp_reply_frame, myMAC, myIP, &arp_packet);
+								arp_reply_len = ETHNET_BuildARPReply(
+										arp_reply_frame,
+										myMAC,
+										myIP,
+										&arp_packet
+								);
 
 								/*
 								 * Send ARP Reply
@@ -248,17 +258,69 @@ void Test_011_ETH_Raw_Frame_TX(void){
 						} else{
 							dbg_arp_parse_fail++;
 						}
-					} else if(eth_frame.ethertype == ETHNET_ETHERTYPE_IPV4){
+					}
+
+					/*
+					 * IPv4 Packet Handling
+					 */
+					else if(eth_frame.ethertype == ETHNET_ETHERTYPE_IPV4){
 						dbg_ethnet_ipv4_count++;
 
-						udp_available = ETHNET_GetUDPPayload(frame, frame_length, TEST_UDP_PORT, &payload, &payload_length);
+						/*
+						 * Only process IPv4 packets addressed to my IP
+						 */
+						if(ETHNET_IsIPv4PacketForIP(frame, frame_length, myIP) == 1U){
+							/*
+							 * ICMP Echo Reply Handling
+							 *
+							 * If this IPv4 packet is not ICMP echo request,
+							 * ETHNET_BuildICMPEchoReply returns 0.
+							 */
+							icmp_reply_len = ETHNET_BuildICMPEchoReply(
+									icmp_reply_frame,
+									ETH_TX_BUF_SIZE,
+									frame,
+									frame_length,
+									myMAC,
+									myIP
+							);
 
-						dbg_udp_available = udp_available;
+							if(icmp_reply_len != 0U){
+								dbg_icmp_request_count++;
 
-						if(udp_available == 1U){
-							dbg_payload_length = payload_length;
-							dbg_udp_match_count++;
+								if(ETH_SendRawFrame(icmp_reply_frame, icmp_reply_len) == 1U){
+									dbg_icmp_reply_sent_count++;
+								} else{
+									dbg_icmp_reply_fail_count++;
+								}
+							}
+
+							/*
+							 * UDP Payload Handling
+							 */
+							udp_available = ETHNET_GetUDPPayload(
+									frame,
+									frame_length,
+									TEST_UDP_PORT,
+									&payload,
+									&payload_length
+							);
+
+							dbg_udp_available = udp_available;
+
+							if(udp_available == 1U){
+								dbg_payload_length = payload_length;
+								dbg_udp_match_count++;
+
+								/*
+								 * Telemetry parser will be added here.
+								 */
+							}
 						}
+					}
+
+					else{
+						dbg_ethnet_unknown_count++;
 					}
 				} else if(eth_frame.frame_format == ETHNET_FRAME_IEEE_802_3){
 					dbg_ethnet_8023_count++;
@@ -266,12 +328,14 @@ void Test_011_ETH_Raw_Frame_TX(void){
 					dbg_ethnet_unknown_count++;
 				}
 			} else{
-				dbg_ethnet_parse_fail;
+				dbg_ethnet_parse_fail++;
 			}
 
+			/*
+			 * Release RX descriptor after all processing is finished.
+			 */
 			ETH_ReleaseRXDescriptor();
 		}
 	}
-
-
 }
+

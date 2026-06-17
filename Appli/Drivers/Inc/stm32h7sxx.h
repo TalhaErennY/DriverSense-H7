@@ -2457,19 +2457,44 @@ typedef struct{
 /* ETH MTL bit position macros                                                */
 /* -------------------------------------------------------------------------- */
 /*
+ * @ETH_MTLRXQOMR_CONFIGS
  * Bit position definitions for ETH_MTLRXQOMR: Rx queue operating mode register
  */
-#define ETH_MTLRXQOMR_RSF				5U		// Receive queue store and forward
+#define ETH_MTLRXQOMR_RTC				0U		// Receive threshold control, bits [1:0]
+#define ETH_MTLRXQOMR_FUP				3U		// Forward undersized good packets
+#define ETH_MTLRXQOMR_FEP				4U		// Forward error packets
+#define ETH_MTLRXQOMR_RSF				5U		// Receive store and forward
+#define ETH_MTLRXQOMR_DIS_TCP_EF		6U		// Disable dropping TCP/IP checksum error packets
+#define ETH_MTLRXQOMR_EHFC				7U		// Enable hardware flow control
+
+#define ETH_MTLRXQOMR_RTC_MSK			(3UL << ETH_MTLRXQOMR_RTC)
+#define ETH_MTLRXQOMR_FUP_MSK			(1UL << ETH_MTLRXQOMR_FUP)
+#define ETH_MTLRXQOMR_FEP_MSK			(1UL << ETH_MTLRXQOMR_FEP)
 #define ETH_MTLRXQOMR_RSF_MSK			(1UL << ETH_MTLRXQOMR_RSF)
+#define ETH_MTLRXQOMR_DIS_TCP_EF_MSK	(1UL << ETH_MTLRXQOMR_DIS_TCP_EF)
+#define ETH_MTLRXQOMR_EHFC_MSK			(1UL << ETH_MTLRXQOMR_EHFC)
 
 /*
+ * @ETH_MTLTXQOMR_CONFIGS
  * Bit position definitions for ETH_MTLTXQOMR: Tx queue operating mode register
  */
 #define ETH_MTLTXQOMR_FTQ				0U		// Flust trnsmit queue
 #define ETH_MTLTXQOMR_TSF				1U		// Transmit store and forward
+#define ETH_MTLTXQOMR_TXQEN				3U		// Transmit queue enable
+#define ETH_MTLTXQOMR_TTC				4U		// Transmit threshold control
+#define ETH_MTLTXQOMR_TQS				16U		// Transmit queue size
 
 #define ETH_MTLTXQOMR_FTQ_MSK			(1UL << ETH_MTLTXQOMR_FTQ)
 #define ETH_MTLTXQOMR_TSF_MSK			(1UL << ETH_MTLTXQOMR_TSF)
+#define ETH_MTLTXQOMR_TXQEN_MSK			(3UL << ETH_MTLTXQOMR_TXQEN)	// Use TXQEN Field Values Macros
+#define ETH_MTLTXQOMR_TTC_MSK			(7UL << ETH_MTLTXQOMR_TTC)		// Threshold level from 32 = 0b000 to 512 = 0b111 <!These bits are only used when TSF is reset>
+#define ETH_MTLTXQOMR_TQS_MSK			(7UL << ETH_MTLTXQOMR_TQS)		// Queue size range from 256 bytes TQS = 0b000 to 2024 bytes TQS = 0b111
+
+/*
+ * TXQEN field values
+ */
+#define ETH_MTLTXQOMR_TXQEN_DISABLE		(0UL << ETH_MTLTXQOMR_TXQEN)
+#define ETH_MTLTXQOMR_TXQEN_ENABLE		(2UL << ETH_MTLTXQOMR_TXQEN)
 
 /* -------------------------------------------------------------------------- */
 /* ETH DMA Channel bit position macros                                        */

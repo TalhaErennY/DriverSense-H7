@@ -58,8 +58,48 @@
  * @ETHNET_IPV4_SELECTION
  * IPv4 protocol and header selection macros
  */
-#define ETHNET_IPV4_MIN_HEADER_LEN      20U
+#define ETHNET_IPV4_PROTOCOL_ICMP		1U
+#define ETHNET_IPV4_PROTOCOL_TCP		6U
 #define ETHNET_IPV4_PROTOCOL_UDP        17U
+
+#define ETHNET_IPV4_MIN_HEADER_LEN      20U
+
+/*
+ * @ETHNET_IPV4_HEADER_OFFSETS
+ * IPv4 header offsets
+ */
+#define ETHNET_IPV4_VER_IHL_OFFSET       0U
+#define ETHNET_IPV4_DSCP_ECN_OFFSET      1U
+#define ETHNET_IPV4_TOTAL_LEN_OFFSET     2U
+#define ETHNET_IPV4_ID_OFFSET            4U
+#define ETHNET_IPV4_FLAGS_FRAG_OFFSET    6U
+#define ETHNET_IPV4_TTL_OFFSET           8U
+#define ETHNET_IPV4_PROTOCOL_OFFSET      9U
+#define ETHNET_IPV4_CHECKSUM_OFFSET      10U
+#define ETHNET_IPV4_SRC_ADDR_OFFSET      12U
+#define ETHNET_IPV4_DST_ADDR_OFFSET     16U
+#define ETHNET_IPV4_OPTIONS_OFFSET       20U
+
+/*
+ * @ETHNET_ICMP_HEADER_OFFSETS
+ * ICMP header offsets
+ */
+#define ETHNET_ICMP_TYPE_OFFSET			0U
+#define ETHNET_ICMP_CODE_OFFSET			1U
+#define ETHNET_ICMP_CHECKSUM_OFFSET		2U
+#define ETHNET_ICMP_IDENTIFIER_OFFSET	4U
+#define ETHNET_ICMP_SEQUENCE_OFFSET		6U
+
+/*
+ * @ETHNET_ICMP_VALUES
+ * ICMP Values
+ */
+#define ETHNET_ICMP_HEADER_LEN			8U
+#define ETHNET_ICMP_TYPE_ECHO_REPLY		0U
+#define ETHNET_ICMP_TYPE_TIMEX			11U
+#define ETHNET_ICMP_TYPE_ECHO_REQUEST	8U
+#define ETHNET_ICMP_CODE_ECHO			0U
+
 
 /*
  * @ETHNET_UDP_SELECTION
@@ -162,6 +202,13 @@ uint8_t ETHNET_GetUDPPayload(const uint8_t *pFrame, uint32_t FrameLength, uint16
  */
 uint8_t ETHNET_ParseARPPacket(const uint8_t *pPayload, uint32_t PayloadLen, ETHNET_ARP_Packet_t *pArp);
 uint32_t ETHNET_BuildARPReply(uint8_t *pOutFrame, const uint8_t myMAC[ETHNET_MAC_ADDR_LEN], const uint8_t myIP[ETHNET_IPV4_ADDR_LEN], const ETHNET_ARP_Packet_t *pRequest);
+
+/*
+ * IPv4 / ICMP Functions
+ */
+uint8_t ETHNET_IsIPv4PacketForIP(const uint8_t *pFrame, uint32_t FrameLen, const uint8_t ip[ETHNET_IPV4_ADDR_LEN]);
+uint16_t ETHNET_CalcCheckSum16(const uint8_t * pData, uint32_t Len);
+uint32_t ETHNET_BuildICMPEchoReply(uint8_t *pOut, uint32_t OutSize, const uint8_t *pRequest, uint32_t RequestLen, const uint8_t myMAC[ETHNET_MAC_ADDR_LEN], const uint8_t myIP[ETHNET_IPV4_ADDR_LEN]);
 
 /*
  * Helper Functions
