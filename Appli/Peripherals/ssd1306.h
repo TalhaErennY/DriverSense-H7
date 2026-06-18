@@ -39,6 +39,13 @@
 #define SSD1306_PIXEL_ON           1U
 
 /*
+ * OLED update selection
+ */
+#define OLED_STARTUP_INFO_TIME_MS			3000U
+#define OLED_DASH_UPDATE_PERIOD_MS			100U
+#define OLED_WAIT_UPDATE_PERIOD_COUNT		100U
+
+/*
  * Dashboard data structure
  */
 typedef struct
