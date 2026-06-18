@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include "stm32h7sxx_i2c_driver.h"
 
+#define SSD1306_X_OFFSET                1U
+
 /*
  * @SSD1306_DISPLAY_CONFIGURATION
  * SSD1306 display size and buffer configuration macros

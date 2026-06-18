@@ -39,10 +39,11 @@ int main(void){
 	//Test_009_ETH_Frame_Parse();
 	//Test_010_ETH_ARP_Parse();
 	//Test_011_ETH_Raw_Frame_TX();
-	Test_012_ETH_ICMP_Echo();
+	//Test_012_ETH_ICMP_Echo();
 
 	/*Forza Test*/
 	//Test_000_ETH_Forza_Test();
+	Test_020_ForzaDB_App_Test();
 
 
 

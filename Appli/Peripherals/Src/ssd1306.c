@@ -111,8 +111,11 @@ void SSD1306_DrawPixel(uint8_t x, uint8_t y, uint8_t state)
 {
     uint16_t index;
     uint8_t bit_mask;
+    uint8_t physical_x;
 
-    if ((x >= SSD1306_WIDTH) || (y >= SSD1306_HEIGHT))
+    physical_x = (uint8_t)(x + SSD1306_X_OFFSET);
+
+    if ((physical_x >= SSD1306_WIDTH) || (y >= SSD1306_HEIGHT))
     {
         return;
     }
@@ -124,7 +127,7 @@ void SSD1306_DrawPixel(uint8_t x, uint8_t y, uint8_t state)
      * y / 8 -> page
      * y % 8 -> bit in byte
      */
-    index = (uint16_t)x + ((uint16_t)(y / 8U) * SSD1306_WIDTH);
+    index = (uint16_t)physical_x + ((uint16_t)(y / 8U) * SSD1306_WIDTH);
     bit_mask = (uint8_t)(1U << (y % 8U));
 
     if (state == SSD1306_PIXEL_ON)

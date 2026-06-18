@@ -108,6 +108,30 @@
 #define ETHNET_UDP_HEADER_LEN           8U
 
 /*
+ * @ETHNET_UDP_HEADER_OFFSETS
+ * UDP header offsets
+ */
+#define ETHNET_UDP_SRC_PORT_OFFSET		0U
+#define ETHNET_UDP_DST_PORT_OFFSET		2U
+#define ETHNET_UDP_LEN_OFFSET			4U
+#define ETHNET_UDP_CKSUM_OFFSET			6U
+
+/*
+ * @ETHNET_UDP_PSE_HEADER_OFFSETS
+ * UDP pseudo-header for checksum computation offsets
+ */
+#define ETHNET_UDPPSE_SRC_ADDR_OFFSET	0U
+#define ETHNET_UDPPSE_DST_ADDR_OFFSET	4U
+#define ETHNET_UDPPSE_ZEROES_OFFSET		8U
+#define ETHNET_UDPPSE_PROTOCOL_OFFSET	9U
+#define ETHNET_UDPPSE_UDPLEN_OFFSET		10U
+#define ETHNET_UDPPSE_SRC_PORT_OFFSET	12U
+#define ETHNET_UDPPSE_DST_PORT_OFFSET	14U
+#define ETHNET_UDPPSE_LEN_OFFSET		16U
+#define ETHNET_UDPPSE_CKSUM_OFFEST		18U
+
+
+/*
  * Ethernet II Header Struct
  *
  * This struct is only for layout reference.

@@ -24,6 +24,7 @@ void Test_011_ETH_Raw_Frame_TX(void);
 void Test_012_ETH_ICMP_Echo(void);
 
 void Test_000_ETH_Forza_Test(void);
+void Test_020_ForzaDB_App_Test(void);
 
 
 #endif /* TESTCODES_H_ */

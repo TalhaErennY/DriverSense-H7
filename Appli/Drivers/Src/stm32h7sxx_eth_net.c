@@ -24,6 +24,12 @@ static void WriteU16LE(uint8_t *pData, uint32_t offset, uint16_t value);
 static void WriteU32BE(uint8_t *pData, uint32_t offset, uint32_t value);
 static void WriteU32LE(uint8_t *pData, uint32_t offset, uint32_t value);
 
+//Checksum Functions
+static uint32_t ChecksumAddBuffer(uint32_t sum, const uint8_t *pData, uint32_t len);
+static uint16_t FoldChecksum32(uint32_t sum);
+static uint8_t IsIPv4HeaderChecksumValid(const uint8_t *pIPHeader, uint32_t IPHeaderLen);
+static uint8_t IsUDPChecksumValid(const uint8_t *pIPHeader, uint32_t IPTotalLen, uint32_t IPHeaderLen);
+
 /******************************************************************************************************
  * 								Ethernet Frame Parser Functions
  ******************************************************************************************************/
@@ -136,22 +142,24 @@ uint8_t ETHNET_ParseEthernetFrame(const uint8_t *pFrame, uint32_t FrameLength, E
  *
  * @return			- 1 if valid UDP payload is found, 0 otherwise
  *
- * @Note			- This function checks Ethernet II, IPv4, UDP protocol and
- * 					  destination port.
- * 					- UDP payload is not null-terminated.
- *					- User must use returned payload length.
+ * @Note			- This function checks Ethernet II, IPv4, IPv4 checksum,
+ * 					  UDP protocol, UDP destination port, UDP length and
+ * 					  UDP checksum.
+ * 					- In IPv4, UDP checksum value 0x0000 means checksum disabled.
+ *					- UDP payload is not null-terminated.
  *
  */
 uint8_t ETHNET_GetUDPPayload(const uint8_t* pFrame, uint32_t FrameLength, uint16_t ExpectedPort, const uint8_t **ppPayload, uint32_t *pPayloadLength){
 	uint16_t ethertype;
 
-	uint8_t ip_header_len;
-	uint8_t ip_version;
-	uint8_t ip_protocol;
+	uint32_t ip_offset;
+	uint16_t ip_total_len;
+	uint8_t  ip_header_len;
+	uint8_t  ip_version;
+	uint8_t  ip_protocol;
 
 	uint32_t udp_header_offset;
 	uint32_t udp_payload_offset;
-
 	uint16_t udp_dest_port;
 	uint16_t udp_len;
 
@@ -165,24 +173,25 @@ uint8_t ETHNET_GetUDPPayload(const uint8_t* pFrame, uint32_t FrameLength, uint16
 	 */
 	ethertype = ETHNET_GetEtherType(pFrame, FrameLength);
 
-	if(ethertype != ETHNET_ETHERTYPE_IPV4){
-		return 0U;
-	}
+	if(ethertype != ETHNET_ETHERTYPE_IPV4) return 0U;
 
 	/*
 	 * Minimum Ethernet + IPv4 + UDP Header Length Check
 	 */
-	if(FrameLength < (ETHNET_IPV4_MIN_HEADER_LEN + ETHNET_UDP_HEADER_LEN + ETHNET_HEADER_LEN)){
-		return 0U;
-	}
+	if(FrameLength < (ETHNET_IPV4_MIN_HEADER_LEN + ETHNET_UDP_HEADER_LEN + ETHNET_HEADER_LEN)) return 0U;
+
+	/*
+	 * IPv4 Header starts after Ethernet header
+	 */
+	ip_offset = ETHNET_HEADER_LEN;
 
 	/*
 	 * IPv4 header starts after Ethernet header.
 	 * pFrame[14] example:
 	 * 0x45 -> Version = 4, IHL = 5
 	 */
-	ip_version 		= (uint8_t)(pFrame[ETHNET_HEADER_LEN] >> 4U);		   	// Upper 4 bits show the version
-	ip_header_len 	= (uint8_t)((pFrame[ETHNET_HEADER_LEN] & 0x0FU) * 4U); 	// This shows how many 32-bit word exists
+	ip_version 		= (uint8_t)(pFrame[ip_offset + ETHNET_IPV4_VER_IHL_OFFSET] >> 4U);		   	// Upper 4 bits show the version
+	ip_header_len 	= (uint8_t)((pFrame[ip_offset + ETHNET_IPV4_VER_IHL_OFFSET] & 0x0FU) * 4U); 	// This shows how many 32-bit word exists
 
 	//Checks
 	if(ip_version != 4U) return 0U;
@@ -190,24 +199,36 @@ uint8_t ETHNET_GetUDPPayload(const uint8_t* pFrame, uint32_t FrameLength, uint16
 	if(FrameLength < (ETHNET_HEADER_LEN + ip_header_len + ETHNET_UDP_HEADER_LEN)) return 0U;
 
 	/*
+	 * IPv4 Total len check
+	 */
+	ip_total_len = ReadU16BE(pFrame, (ip_offset + ETHNET_IPV4_TOTAL_LEN_OFFSET));
+	if(ip_total_len < (ip_header_len + ETHNET_UDP_HEADER_LEN)) return 0U;
+	if((ETHNET_HEADER_LEN + (uint32_t)ip_total_len) > FrameLength) return 0U;
+
+	/*
+	 * IPv4 Header Checksum Validation
+	 */
+	if(IsIPv4HeaderChecksumValid(&pFrame[ip_offset], ip_header_len) == 0U) return 0U;
+
+	/*
 	 * IPv4 protocol field is at offset 9 inside IPv4 header
 	 * UDP = 17
 	 */
-	ip_protocol = (uint8_t)(pFrame[ETHNET_HEADER_LEN + 9U]);
+	ip_protocol = (uint8_t)(pFrame[ip_offset + ETHNET_IPV4_PROTOCOL_OFFSET]);
 
 	if(ip_protocol != ETHNET_IPV4_PROTOCOL_UDP) return 0U;
 
 	/*
 	 * UDP Header starts after Ethernet Header + IPv4 Header
 	 */
-	udp_header_offset = ETHNET_HEADER_LEN + ip_header_len;
+	udp_header_offset = ip_offset + ip_header_len;
 
 	/*
 	 * UDP Destiantion port is byte 2-3 inside UDP Header
 	 *
 	 * Since the UDP data is being written in Big Endian use Read16BE function
 	 */
-	udp_dest_port = ReadU16BE(pFrame, udp_header_offset + 2U);
+	udp_dest_port = ReadU16BE(pFrame, udp_header_offset + ETHNET_UDP_DST_PORT_OFFSET);
 
 	if(udp_dest_port != ExpectedPort) return 0U;
 
@@ -216,9 +237,22 @@ uint8_t ETHNET_GetUDPPayload(const uint8_t* pFrame, uint32_t FrameLength, uint16
 	 *
 	 * Header + Payload
 	 */
-	udp_len = ReadU16BE(pFrame, udp_header_offset + 4U);
+	udp_len = ReadU16BE(pFrame, udp_header_offset + ETHNET_UDP_LEN_OFFSET);
 
 	if(udp_len < ETHNET_UDP_HEADER_LEN) return 0U;
+
+	/*
+	 * Dup packet must fit inside IPv4 Packet
+	 */
+	if((ip_header_len + udp_len) > ip_total_len) return 0U;
+
+	/*
+	 * UDP CheckSum Validation
+	 *
+	 * if IPv4 UDP Checksum is 0, it is disabled
+	 * if not zero, pseudo-header checksum validation is performed (see UDPPSE macros)
+	 */
+	if(IsUDPChecksumValid(&pFrame[ip_offset], ip_total_len, ip_header_len) == 0U) return 0U;
 
 	udp_payload_offset = udp_header_offset + ETHNET_UDP_HEADER_LEN;
 
@@ -617,7 +651,7 @@ uint8_t ETHNET_IsIPv4PacketForIP(const uint8_t *pFrame, uint32_t FrameLen, const
 }
 
 /****************************************************************************
- * @fn				- ETHNET_CalcChecksum16
+ * @fn				- ETHNET_CalcCheckSum16
  *
  * @brief			- This function calculates the standard 16-bit one's
  * 					  complement checksum
@@ -633,30 +667,15 @@ uint8_t ETHNET_IsIPv4PacketForIP(const uint8_t *pFrame, uint32_t FrameLen, const
  *					- Data is interpreted as big-endian 16-bit words.
  *
  */
-uint16_t ETHNET_CalcCheckSum16(const uint8_t * pData, uint32_t Len){
-	if((pData == 0) || (Len == 0)) return 0U;
+uint16_t ETHNET_CalcCheckSum16(const uint8_t *pData, uint32_t Len){
+	uint32_t sum;
 
-	uint32_t sum = 0U;
-	uint16_t word;
+	if((pData == 0U) || (Len == 0U)) return 0U;
 
-	while(Len > 1U){
-		word = ((uint16_t)pData[0] << 8U) | ((uint16_t)pData[1]);
-		sum += word;
+	sum = 0U;
+	sum = ChecksumAddBuffer(sum, pData, Len);
 
-		pData += 2U;
-		Len -= 2U;
-	}
-
-	if(Len > 0U){
-		word = ((uint16_t)pData[0] << 8U);
-		sum += word;
-	}
-
-	while((sum >> 16U) != 0U){
-		sum = (sum & 0xFFFFU) + (sum >> 16U);
-	}
-
-	return (uint16_t)(~sum);
+	return FoldChecksum32(sum);
 }
 
 /******************************************************************************************************
@@ -712,6 +731,181 @@ uint8_t ETHNET_IsSameMAC(const uint8_t *pMAC1, const uint8_t *pMAC2){
 
 	return 1U;
 }
+
+/******************************************************************************************************
+ * 								Checksum Helper Functions
+ ******************************************************************************************************/
+/****************************************************************************
+ * @fn				- ChecksumAddBuffer
+ *
+ * @brief			- This internal helper adds a byte buffer to a 32-bit
+ * 					  one's complement checksum accumulator
+ *
+ * @param[in]		- current checksum sum
+ * @param[in]		- pointer to input data buffer
+ * @param[in]		- data length in bytes
+ *
+ * @return			- updated 32-bit checksum sum
+ *
+ * @Note			- Data is interpreted as big-endian 16-bit words.
+ * 					- If length is odd, the last byte is padded with zero.
+ *					- This function is private to this file.
+ *
+ */
+static uint32_t ChecksumAddBuffer(uint32_t sum, const uint8_t *pData, uint32_t len){
+	uint16_t word;
+
+	if(pData == 0U) return sum;
+
+	while(len > 1U){
+		word = ((uint16_t)pData[0U] << 8U) | ((uint16_t)pData[1U]);
+		sum += word;
+
+		pData += 2U;
+		len -= 2U;
+	}
+
+	if(len > 0){
+		word = ((uint16_t)pData[0U] << 8U);
+		sum += word;
+	}
+
+	return sum;
+}
+
+/****************************************************************************
+ * @fn				- FoldChecksum32
+ *
+ * @brief			- This internal helper folds a 32-bit checksum sum into
+ * 					  a 16-bit one's complement checksum value
+ *
+ * @param[in]		- 32-bit checksum sum
+ * @param[in]		-
+ * @param[in]		-
+ *
+ * @return			- 16-bit one's complement checksum value
+ *
+ * @Note			- This function is private to this file.
+ * 					- It is used by IPv4, ICMP and UDP checksum calculations.
+ *					-
+ *
+ */
+static uint16_t FoldChecksum32(uint32_t sum){
+	while((sum >> 16U) != 0U){
+		sum = (sum & 0xFFFFU) + (sum >> 16U);
+	}
+
+	return (uint16_t)(~sum);
+}
+
+/****************************************************************************
+ * @fn				- IsIPv4HeaderChecksumValid
+ *
+ * @brief			- This internal helper validates IPv4 header checksum
+ *
+ * @param[in]		- pointer to IPv4 header
+ * @param[in]		- IPv4 header length in bytes
+ * @param[in]		-
+ *
+ * @return			- 1 if IPv4 header checksum is valid, 0 otherwise
+ *
+ * @Note			- IPv4 header checksum includes the checksum field itself.
+ * 					- If the header is valid, calculated checksum result is 0.
+ *					- This function is private to this file.
+ *
+ */
+static uint8_t IsIPv4HeaderChecksumValid(const uint8_t *pIPHeader, uint32_t IPHeaderLen){
+	if(pIPHeader == 0U) return 0U;
+	if(IPHeaderLen < ETHNET_IPV4_MIN_HEADER_LEN) return 0U;
+
+	if(ETHNET_CalcCheckSum16(pIPHeader, IPHeaderLen) == 0U) return 1U;
+
+	return 0U;
+}
+
+/****************************************************************************
+ * @fn				- IsUDPChecksumValid
+ *
+ * @brief			- This internal helper validates UDP checksum using IPv4
+ * 					  pseudo-header
+ *
+ * @param[in]		- pointer to IPv4 header
+ * @param[in]		- IPv4 total length
+ * @param[in]		- IPv4 header length
+ *
+ * @return			- 1 if UDP checksum is valid or disabled, 0 otherwise
+ *
+ * @Note			- In IPv4, UDP checksum value 0x0000 means checksum disabled.
+ * 					- If UDP checksum is not zero, IPv4 pseudo-header is used.
+ *					- Pseudo-header is not transmitted on the wire.
+ *					- This function is private to this file.
+ *
+ */
+static uint8_t IsUDPChecksumValid(const uint8_t *pIPHeader, uint32_t IPTotalLen, uint32_t IPHeaderLen){
+	const uint8_t *pUDP;
+
+	uint32_t sum;
+	uint32_t udp_len;
+	uint32_t udp_data_len;
+
+	uint16_t udp_checksum;
+
+	if(pIPHeader == 0U) return 0U;
+	if(IPHeaderLen < ETHNET_IPV4_MIN_HEADER_LEN) return 0U;
+	if(IPTotalLen < (IPHeaderLen + ETHNET_UDP_HEADER_LEN)) return 0U;
+
+	/*
+	 * UDP Header starts after IPv4 header
+	 */
+	pUDP = &pIPHeader[IPHeaderLen];
+
+	/*
+	 * UDP Len
+	 */
+	udp_len = (uint32_t)ReadU16BE(pUDP, ETHNET_UDP_LEN_OFFSET);
+
+	if(udp_len < ETHNET_UDP_HEADER_LEN) return 0U;
+	if((IPHeaderLen + udp_len) > IPTotalLen) return 0U;
+
+	/*
+	 * UDP Checksum field
+	 */
+	udp_checksum = ReadU16BE(pUDP, ETHNET_UDP_CKSUM_OFFSET);
+
+	/*
+	 * If 0x0000,  UDP checksum disabled
+	 */
+	if(udp_checksum == 0U) return 1U;
+
+	sum = 0U;
+
+	/*
+	 * IPv4 Pseudo Headers
+	 */
+	sum += ReadU16BE(pIPHeader, ETHNET_IPV4_SRC_ADDR_OFFSET + 0U);
+	sum += ReadU16BE(pIPHeader, ETHNET_IPV4_SRC_ADDR_OFFSET + 2U);
+
+	sum += ReadU16BE(pIPHeader, ETHNET_IPV4_DST_ADDR_OFFSET + 0U);
+	sum += ReadU16BE(pIPHeader, ETHNET_IPV4_DST_ADDR_OFFSET + 2U);
+
+	sum += (uint16_t)ETHNET_IPV4_PROTOCOL_UDP;
+	sum += (uint16_t)udp_len;
+
+	/*
+	 * UDP Header + UDP payload are added including cheksum field
+	 */
+	udp_data_len = udp_len;
+	sum = ChecksumAddBuffer(sum, pUDP, udp_data_len);
+
+	/*
+	 * If checksum valid, final one's compelemtn result becomes 0x0000
+	 */
+	if(FoldChecksum32(sum) == 0U) return 1U;
+
+	return 0U;
+}
+
+
 
 
 /******************************************************************************************************
