@@ -202,6 +202,7 @@ uint8_t ForzaDB_ParsePacket(const uint8_t *pPayload, uint32_t PayloadLen, ForzaD
 void ForzaDB_BuildDashboardData(const ForzaDB_Packet_t *pPacket, ForzaDB_Dashboard_t *pDash){
 	float speed_kmh;
 	uint8_t slip_percent;
+	static uint16_t last_valid_max_rpm = 8000U;
 
 	if((pPacket == 0U) || (pDash == 0U)) return;
 
@@ -229,11 +230,19 @@ void ForzaDB_BuildDashboardData(const ForzaDB_Packet_t *pPacket, ForzaDB_Dashboa
 		pDash->Rpm = (uint16_t)pPacket->CurrentEngineRpm;
 	}
 
-	if(pPacket->EngineMaxRpm < 0.0f){
-		pDash->MaxRpm = 0U;
-	} else{
-		pDash->MaxRpm = (uint16_t)pPacket->EngineMaxRpm;
+	/*
+	 * Max RPM can briefly become 0 or invalid when the car changes,
+	 * when the game is in menu or while telemetry is being refreshed.
+	 *
+	 * Keep the last valid MaxRpm so the RPM scale does not collapse
+	 * during vehicle changes. When a new valid car value arrives, the
+	 * scale is updated automatically.
+	 */
+	if((pPacket->EngineMaxRpm >= 1000.0f) && (pPacket->EngineMaxRpm <= 20000.0f)){
+		last_valid_max_rpm = (uint16_t)pPacket->EngineMaxRpm;
 	}
+
+	pDash->MaxRpm = last_valid_max_rpm;
 
 	/*
 	 * Driver inputs
@@ -377,7 +386,7 @@ void OLED_ShowStartupInfo(void){
 	SSD1306_DrawRect(0U, 0U, 128U, 64U, SSD1306_PIXEL_ON);
 
 	SSD1306_DrawString5x7(6U, 6U,  "DRIVESENSE-H7");
-	SSD1306_DrawString5x7(6U, 18U, "FORZA UDP DASH");
+	SSD1306_DrawString5x7(6U, 18U, "FORZA DASHBOARD");
 	SSD1306_DrawString5x7(6U, 30U, "IP 192.168.1.50");
 	SSD1306_DrawString5x7(6U, 42U, "PORT 5005");
 	SSD1306_DrawString5x7(6U, 54U, "BOOTING...");
@@ -474,26 +483,26 @@ void OLED_ShowForzaDashboard(const ForzaDB_Dashboard_t *pDash){
 	 * ============================================================
 	 */
 	SSD1306_DrawString5x7(0U, 0U, "T");
-	OLED_DrawMiniSegmentBar(1U, 9U, 8U, 21U, pDash->BoostPercent);
+	OLED_DrawMiniSegmentBar(1U, 8U, 7U, 20U, pDash->BoostPercent);
 
 	snprintf(line, sizeof(line), "%u.%u",
 			(uint16_t)(pDash->BoostBarX10 / 10U),
 			(uint16_t)(pDash->BoostBarX10 % 10U));
-	SSD1306_DrawString5x7(11U, 12U, line);
-	SSD1306_DrawString5x7(11U, 21U, "B");
+	SSD1306_DrawString5x7(10U, 12U, line);
+	SSD1306_DrawString5x7(10U, 21U, "B");
 
-	OLED_DrawLine(0U, 35U, 24U, 35U);
+	OLED_DrawLine(0U, 31U, 24U, 31U);
 
 	/*
 	 * ============================================================
 	 * LEFT SIDE - COMPACT FUEL
 	 * ============================================================
 	 */
-	SSD1306_DrawString5x7(0U, 38U, "F");
-	OLED_DrawMiniSegmentBar(1U, 46U, 8U, 15U, pDash->FuelPercent);
+	SSD1306_DrawString5x7(0U, 34U, "F");
+	OLED_DrawMiniSegmentBar(1U, 42U, 7U, 12U, pDash->FuelPercent);
 
-	SSD1306_DrawString5x7(11U, 44U, "F");
-	SSD1306_DrawString5x7(11U, 53U, "E");
+	SSD1306_DrawString5x7(10U, 40U, "F");
+	SSD1306_DrawString5x7(10U, 49U, "E");
 
 	/*
 	 * ============================================================
@@ -530,8 +539,8 @@ void OLED_ShowForzaDashboard(const ForzaDB_Dashboard_t *pDash){
 	 */
 	speed_x = OLED_GetLargeNumberX(pDash->SpeedKmh, 66U);
 
-	SSD1306_DrawNumberLarge(speed_x, 28U, pDash->SpeedKmh);
-	SSD1306_DrawString5x7(82U, 46U, "KMH");
+	SSD1306_DrawNumberLarge(speed_x, 25U, pDash->SpeedKmh);
+	SSD1306_DrawString5x7(92U, 45U, "KMH");
 
 	/*
 	 * ============================================================
@@ -541,8 +550,8 @@ void OLED_ShowForzaDashboard(const ForzaDB_Dashboard_t *pDash){
 	 * Only arrows are drawn. When a shift suggestion is active, the
 	 * box is drawn in reverse style.
 	 */
-	OLED_DrawShiftBoxSmall(113U, 18U, 1U, shift_up_active);
-	OLED_DrawShiftBoxSmall(113U, 38U, 0U, shift_down_active);
+	OLED_DrawShiftBoxSmall(112U, 18U, 1U, shift_up_active);
+	OLED_DrawShiftBoxSmall(112U, 38U, 0U, shift_down_active);
 
 	/*
 	 * ============================================================
@@ -823,17 +832,6 @@ static void OLED_DrawRpmArcMath(uint8_t rpm_percent, uint16_t max_rpm){
 
 	snprintf(label, sizeof(label), "%u", rpm_label_100);
 	SSD1306_DrawString5x7(104U, 45U, label);
-
-	/*
-	 * Redline zone imitation.
-	 */
-	if(rpm_percent >= 85U){
-		SSD1306_DrawPixel(105U, 37U, SSD1306_PIXEL_ON);
-		SSD1306_DrawPixel(107U, 38U, SSD1306_PIXEL_ON);
-		SSD1306_DrawPixel(105U, 39U, SSD1306_PIXEL_ON);
-		SSD1306_DrawPixel(107U, 40U, SSD1306_PIXEL_ON);
-		SSD1306_DrawPixel(105U, 41U, SSD1306_PIXEL_ON);
-	}
 }
 
 /*
@@ -851,36 +849,36 @@ static void OLED_DrawShiftBoxSmall(uint8_t x, uint8_t y, uint8_t is_up, uint8_t 
 	 * - filled box
 	 * - dark arrow, reverse color effect
 	 *
-	 * Box is intentionally narrower so it stays clear of the RPM area
-	 * and does not create unwanted pixels on the far-right edge.
+	 * The box is kept narrow and away from the far-right column.
+	 * This prevents the single broken-looking pixel column on the
+	 * right edge and keeps the shift indicators outside the RPM arc.
 	 */
 	if(active != 0U){
-		SSD1306_FillRect(x, y, 14U, 16U, SSD1306_PIXEL_ON);
+		SSD1306_FillRect(x, y, 12U, 16U, SSD1306_PIXEL_ON);
 		arrow_state = SSD1306_PIXEL_OFF;
 	} else{
-		SSD1306_DrawRect(x, y, 14U, 16U, SSD1306_PIXEL_ON);
+		SSD1306_DrawRect(x, y, 12U, 16U, SSD1306_PIXEL_ON);
 		arrow_state = SSD1306_PIXEL_ON;
 	}
 
 	if(is_up != 0U){
 		/* Up arrow only */
-		SSD1306_FillRect((uint8_t)(x + 6U), (uint8_t)(y + 5U), 2U, 7U, arrow_state);
-		SSD1306_FillRect((uint8_t)(x + 4U), (uint8_t)(y + 5U), 6U, 2U, arrow_state);
-		SSD1306_DrawPixel((uint8_t)(x + 5U), (uint8_t)(y + 4U), arrow_state);
-		SSD1306_DrawPixel((uint8_t)(x + 8U), (uint8_t)(y + 4U), arrow_state);
+		SSD1306_FillRect((uint8_t)(x + 5U), (uint8_t)(y + 5U), 2U, 7U, arrow_state);
+		SSD1306_FillRect((uint8_t)(x + 3U), (uint8_t)(y + 5U), 6U, 2U, arrow_state);
+		SSD1306_DrawPixel((uint8_t)(x + 4U), (uint8_t)(y + 4U), arrow_state);
+		SSD1306_DrawPixel((uint8_t)(x + 7U), (uint8_t)(y + 4U), arrow_state);
+		SSD1306_DrawPixel((uint8_t)(x + 5U), (uint8_t)(y + 3U), arrow_state);
 		SSD1306_DrawPixel((uint8_t)(x + 6U), (uint8_t)(y + 3U), arrow_state);
-		SSD1306_DrawPixel((uint8_t)(x + 7U), (uint8_t)(y + 3U), arrow_state);
 	} else{
 		/* Down arrow only */
-		SSD1306_FillRect((uint8_t)(x + 6U), (uint8_t)(y + 4U), 2U, 7U, arrow_state);
-		SSD1306_FillRect((uint8_t)(x + 4U), (uint8_t)(y + 9U), 6U, 2U, arrow_state);
-		SSD1306_DrawPixel((uint8_t)(x + 5U), (uint8_t)(y + 11U), arrow_state);
-		SSD1306_DrawPixel((uint8_t)(x + 8U), (uint8_t)(y + 11U), arrow_state);
+		SSD1306_FillRect((uint8_t)(x + 5U), (uint8_t)(y + 4U), 2U, 7U, arrow_state);
+		SSD1306_FillRect((uint8_t)(x + 3U), (uint8_t)(y + 9U), 6U, 2U, arrow_state);
+		SSD1306_DrawPixel((uint8_t)(x + 4U), (uint8_t)(y + 11U), arrow_state);
+		SSD1306_DrawPixel((uint8_t)(x + 7U), (uint8_t)(y + 11U), arrow_state);
+		SSD1306_DrawPixel((uint8_t)(x + 5U), (uint8_t)(y + 12U), arrow_state);
 		SSD1306_DrawPixel((uint8_t)(x + 6U), (uint8_t)(y + 12U), arrow_state);
-		SSD1306_DrawPixel((uint8_t)(x + 7U), (uint8_t)(y + 12U), arrow_state);
 	}
 }
-
 /*
  * Draw bottom status bar.
  *
@@ -892,7 +890,7 @@ static void OLED_DrawBottomStatusClean(const ForzaDB_Dashboard_t *pDash){
 
 	if(pDash == 0U) return;
 
-	SSD1306_DrawRect(0U, 55U, 128U, 9U, SSD1306_PIXEL_ON);
+	SSD1306_DrawRect(0U, 55U, 124U, 9U, SSD1306_PIXEL_ON);
 
 	SSD1306_DrawString5x7(3U, 56U, "DRV");
 
@@ -912,7 +910,7 @@ static void OLED_DrawBottomStatusClean(const ForzaDB_Dashboard_t *pDash){
 	SSD1306_DrawString5x7(99U, 56U, line);
 
 	if(pDash->WarningLevel != FORZADB_WARNING_NONE){
-		SSD1306_FillRect(123U, 57U, 3U, 5U, SSD1306_PIXEL_ON);
+		SSD1306_FillRect(119U, 57U, 3U, 5U, SSD1306_PIXEL_ON);
 	}
 }
 

@@ -100,14 +100,22 @@ static uint8_t ETH_MDIO_WaitReady(void){
 
 static void ETH_CleanDCacheByAddr(uint32_t addr, uint32_t len){
 	uint32_t clean_addr;
-	uint32_t clean_len;
 	uint32_t end_addr;
 
-	if(len == 0U) return;
+	if(len == 0U){
+		return;
+	}
 
-	clean_addr = ETH_ALIGN_DOWN(addr);
-	clean_len  = ETH_ALIGN_UP(len + (addr - clean_addr));
-	end_addr   = clean_addr + clean_len;
+	/*
+	 * Align start address down to cache line boundary.
+	 */
+	clean_addr = addr & ~(ETH_CACHE_LINE_SIZE - 1U);
+
+	/*
+	 * Align end address up to cache line boundary.
+	 */
+	end_addr = (addr + len + (ETH_CACHE_LINE_SIZE - 1U)) &
+			   ~(ETH_CACHE_LINE_SIZE - 1U);
 
 	CPU_DSB();
 
