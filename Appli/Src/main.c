@@ -20,7 +20,16 @@
 #include "stm32h7sxx.h"
 #include "TestCodes.h"
 
+static void CPU_ClearFaultStatus(void);
+
+volatile uint32_t dbg_cfsr;
+volatile uint32_t dbg_hfsr;
+volatile uint32_t dbg_dfsr;
+volatile uint32_t dbg_bfar;
+
 int main(void){
+	CPU_ClearFaultStatus();
+	FAULT_ENABLE();
 	/*Test Functions**********************/
 
 	/*GPIO Driver Test Functions*/
@@ -41,6 +50,9 @@ int main(void){
 	//Test_011_ETH_Raw_Frame_TX();
 	//Test_012_ETH_ICMP_Echo();
 
+	/*FreeRTOS Test Functions*/
+	//Test_001_RTOS_Tasks();
+
 	/*Forza Test*/
 	//Test_000_ETH_Forza_Test();
 	Test_020_ForzaDB_App_Test();
@@ -50,4 +62,35 @@ int main(void){
     while(1);
 
     return 0;
+}
+
+static void CPU_ClearFaultStatus(void){
+    /*
+     * CFSR: write 1 to clear fault bits
+     * HFSR: write 1 to clear fault bits
+     * DFSR: write 1 to clear debug fault bits
+     */
+    *((volatile uint32_t *)0xE000ED28UL) = 0xFFFFFFFFUL; /* CFSR */
+    *((volatile uint32_t *)0xE000ED2CUL) = 0xFFFFFFFFUL; /* HFSR */
+    *((volatile uint32_t *)0xE000ED30UL) = 0xFFFFFFFFUL; /* DFSR */
+}
+
+void BusFault_Handler(void)
+{
+    dbg_cfsr = *((volatile uint32_t *)0xE000ED28UL);
+    dbg_hfsr = *((volatile uint32_t *)0xE000ED2CUL);
+    dbg_dfsr = *((volatile uint32_t *)0xE000ED30UL);
+    dbg_bfar = *((volatile uint32_t *)0xE000ED38UL);
+
+    while(1);
+}
+
+void HardFault_Handler(void)
+{
+    dbg_cfsr = *((volatile uint32_t *)0xE000ED28UL);
+    dbg_hfsr = *((volatile uint32_t *)0xE000ED2CUL);
+    dbg_dfsr = *((volatile uint32_t *)0xE000ED30UL);
+    dbg_bfar = *((volatile uint32_t *)0xE000ED38UL);
+
+    while(1);
 }

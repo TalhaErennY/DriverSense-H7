@@ -2184,11 +2184,16 @@ typedef struct{
 /* -------------------------------------------------------------------------- */
 /* Cortex-M7 FPU definitions                                                  */
 /* -------------------------------------------------------------------------- */
-#define SCB_CPACR_ADDR                 (0xE000ED88UL)
-#define SCB_CPACR                      (*(__vo uint32_t *)SCB_CPACR_ADDR)
+#define SCB_CPACR_ADDR                  (0xE000ED88UL)
+#define SCB_CPACR                       (*(__vo uint32_t *)SCB_CPACR_ADDR)
 
 #define SCB_DCCMVAC_ADDR                (0xE000EF68UL)
 #define SCB_DCCMVAC                     (*((__vo uint32_t *)SCB_DCCMVAC_ADDR))
+
+#define SCB_SHCSR_ADDR					(0xE000ED24UL)
+#define SCB_SHCSR   					(*((__vo uint32_t *)SCB_SHCSR_ADDR))
+
+#define FAULT_ENABLE()					(SCB_SHCSR |= (1UL << 17U))
 
 /*
  * FPU system registers
@@ -2211,6 +2216,7 @@ typedef struct{
 	                                      __asm volatile ("dsb");     \
 	                                      __asm volatile ("isb");     \
                                       } while(0)
+
 
 /* -------------------------------------------------------------------------- */
 /* Cortex-M7 MPU definitions                                                  */

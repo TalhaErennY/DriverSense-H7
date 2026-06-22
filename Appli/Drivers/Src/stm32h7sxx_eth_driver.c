@@ -102,9 +102,9 @@ static void ETH_CleanDCacheByAddr(uint32_t addr, uint32_t len){
 	uint32_t clean_addr;
 	uint32_t end_addr;
 
-	if(len == 0U){
-		return;
-	}
+	if(len == 0U) return;
+    if(len > ETH_TX_BUF_SIZE) return;
+    if((addr + len) < addr) return;
 
 	/*
 	 * Align start address down to cache line boundary.
@@ -538,14 +538,15 @@ void ETH_MTL_TXQueueConfig(uint32_t Value, uint32_t ModeMask){
  *
  */
 void ETH_TXDesc_Init(void){
-	for(uint32_t i = 0U; i < ETH_TX_DESC_CNT; i++){
-		/*
-		 * Clear TX Buffer
-		 */
-		for(uint32_t j = 0U; j < ETH_TX_BUF_SIZE; j++){
-			ETH_TX_Buffers[i][j] = 0U;
-		}
 
+	ETH_TXBuffer_Clear();
+
+	/*
+	 * TX Buffer is cacheable, so clean it after initial clearing
+	 */
+	ETH_CleanDCacheByAddr((uint32_t)&ETH_TX_Buffers[0][0], sizeof(ETH_TX_Buffers));
+
+	for(uint32_t i = 0U; i < ETH_TX_DESC_CNT; i++){
 		/*
 		 * TX Descriptors start as CPU Owned
 		 */
@@ -616,6 +617,36 @@ void ETH_DMA_TXStart(void){
 }
 
 /****************************************************************************
+ * @fn				- ETH_TXBuffer_Clear
+ *
+ * @brief			- T
+ *
+ *
+ * @param[in]		-
+ * @param[in]		-
+ * @param[in]		-
+ *
+ * @return			-
+ *
+ * @Note			-
+ * 					-
+ *
+ *					-
+ *
+ */
+void ETH_TXBuffer_Clear(void){
+	__vo uint32_t *p;
+	uint32_t words;
+
+	p = (__vo uint32_t *)&ETH_TX_Buffers[0][0];
+	words = sizeof(ETH_TX_Buffers) / 4U;
+
+	for(uint32_t i = 0U; i < words; i++){
+		p[i] = 0U;
+	}
+}
+
+/****************************************************************************
  * @fn				- ETH_SendRawFrame
  *
  * @brief			- T
@@ -634,51 +665,62 @@ void ETH_DMA_TXStart(void){
  *
  */
 uint8_t ETH_SendRawFrame(const uint8_t *pFrame, uint32_t FrameLen){
-	ETH_DMADesc_t *pDesc;
+	__vo ETH_DMADesc_t *pDesc;
+	uint32_t desc_index;
 	uint32_t next_desc;
 	uint32_t tx_len;
+	uint32_t tx_clean_len;
 
 	if((pFrame == 0) || (FrameLen == 0) || (FrameLen > ETH_TX_BUF_SIZE)) return 0U;
 
-	pDesc = &ETH_TX_Desc[ETH_TX_CurrentDesc];
+	desc_index = ETH_TX_CurrentDesc;
+	pDesc = &ETH_TX_Desc[desc_index];
 
 	/*
 	 * If OWN is 1, DMA not finised
 	 */
-	if(pDesc->DESC3 & ETH_TDES3_OWN) return 0U;
+	if((pDesc->DESC3 & ETH_TDES3_OWN) != 0U) return 0U;
 
 	/*
 	 * Ethernet minimum len (60) check and add padding if necessary
 	 */
 	tx_len = FrameLen;
 
-	if(tx_len < 60U){
-		tx_len = 60U;
-	}
+	if(tx_len < 60U) tx_len = 60U;
+
+    /*
+     * D-cache clean works with 32-byte cache lines.
+     * Therefore clear the full cache-line-aligned area,
+     * not only tx_len bytes.
+     */
+	tx_clean_len = (tx_len + (ETH_CACHE_LINE_SIZE - 1U)) & ~(ETH_CACHE_LINE_SIZE -1U);
+
+    if(tx_clean_len > ETH_TX_BUF_SIZE) return 0U;
 
 	/*
 	 * Clear TX Buffer for padding area
 	 */
-	for(uint32_t i = 0U; i < tx_len; i++){
-		ETH_TX_Buffers[ETH_TX_CurrentDesc][i] = 0U;
+	for(uint32_t i = 0U; i < tx_clean_len; i++){
+		ETH_TX_Buffers[desc_index][i] = 0U;
 	}
 
 	/*
 	 * Copy frame to TX Buffer
 	 */
 	for(uint32_t i = 0U; i < FrameLen; i++){
-		ETH_TX_Buffers[ETH_TX_CurrentDesc][i] = pFrame[i];
+		ETH_TX_Buffers[desc_index][i] = pFrame[i];
 	}
+
 
 	/*
 	 * Clean D-cache before giving descriptor to DMA
 	 */
-	ETH_CleanDCacheByAddr((uint32_t)&ETH_TX_Buffers[ETH_TX_CurrentDesc][0], tx_len);
+	ETH_CleanDCacheByAddr((uint32_t)&ETH_TX_Buffers[desc_index][0], tx_clean_len);
 
 	/*
 	 * Fill TX Descriptors
 	 */
-	pDesc->DESC0 = (uint32_t)&ETH_TX_Buffers[ETH_TX_CurrentDesc][0];
+	pDesc->DESC0 = (uint32_t)&ETH_TX_Buffers[desc_index][0];
 	pDesc->DESC1 = 0U;
 	pDesc->DESC2 = (tx_len & ETH_TDES2_B1L_MASK);
 
@@ -701,7 +743,7 @@ uint8_t ETH_SendRawFrame(const uint8_t *pFrame, uint32_t FrameLen){
 	/*
 	 * Next descriptor index
 	 */
-	next_desc = ETH_TX_CurrentDesc + 1U;
+	next_desc = desc_index + 1U;
 
 	if(next_desc >= ETH_TX_DESC_CNT) next_desc = 0U;
 

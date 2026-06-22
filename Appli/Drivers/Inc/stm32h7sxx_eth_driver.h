@@ -140,6 +140,7 @@ void ETH_TXDesc_Init(void);
 void ETH_DMA_TXConfig(void);
 void ETH_DMA_TXStart(void);
 uint8_t ETH_SendRawFrame(const uint8_t *pFrame, uint32_t FrameLength);
+void ETH_TXBuffer_Clear(void);
 
 /*
  * DMA RX Descriptor / RX Path Configuration
