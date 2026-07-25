@@ -3,7 +3,7 @@
 **Bare-metal STM32H7 telemetry engine with custom Ethernet networking, an OLED dashboard, FreeRTOS task architecture, and a roadmap toward TinyML-based driving analysis.**
 
 <p align="center">
-  <img src="docs/media/driversense_dashboard.gif"
+  <img src="docs/media/drivesenseh7-prot-demo.gif"
        alt="DriverSense-H7 live Forza telemetry dashboard"
        width="600">
 </p>
