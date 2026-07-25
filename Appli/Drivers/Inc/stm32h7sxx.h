@@ -22,6 +22,22 @@
 #define __vo volatile
 
 /* -------------------------------------------------------------------------- */
+/* Cortex-M7 DWT Registers                                                    */
+/* -------------------------------------------------------------------------- */
+/*
+ * Processor core debug registers.
+ */
+#define COREDEBUG_DEMCR                 (*(__vo uint32_t *)0xE000EDFCUL)
+#define DWT_CTRL                        (*(__vo uint32_t *)0xE0001000UL)
+#define DWT_CYCCNT                      (*(__vo uint32_t *)0xE0001004UL)
+
+/*
+ * Core debug bit positions.
+ */
+#define COREDEBUG_DEMCR_TRCENA          24U
+#define DWT_CTRL_CYCCNTENA              0U
+
+/* -------------------------------------------------------------------------- */
 /* Cortex-M7 NVIC definitions                                                 */
 /* -------------------------------------------------------------------------- */
 
@@ -41,16 +57,6 @@
 #define NVIC_PRIO_BITS_IMPLEMENTED      4U
 #define NVIC_PRIORITY_SHIFT             (8U - NVIC_PRIO_BITS_IMPLEMENTED)
 #define NVIC_PRIORITY_MAX               ((1U << NVIC_PRIO_BITS_IMPLEMENTED) - 1U)
-
-/* -------------------------------------------------------------------------- */
-/* Generic bit manipulation macros                                            */
-/* -------------------------------------------------------------------------- */
-
-/* Generic register bit manipulation helpers. MASK and VAL must be pre-shifted. */
-#define SET_BIT(REG, MASK)              ((REG) |= (MASK))
-#define CLEAR_BIT(REG, MASK)            ((REG) &= ~(MASK))
-#define READ_BIT(REG, MASK)             ((REG) & (MASK))
-#define MODIFY_REG(REG, MASK, VAL)      ((REG) = (((REG) & ~(MASK)) | ((VAL) & (MASK))))
 
 /* -------------------------------------------------------------------------- */
 /* Memory base addresses                                                      */
@@ -2264,13 +2270,259 @@ typedef struct{
 /*
  * Bit position definitions for SBS_PMCR
  */
-#define SBS_PMCR_ETH_PHYSEL			21U		// Ethernet PHY interface selection, 3 bits: [23:21]
+#define SBS_PMCR_ETH_PHYSEL				21U		// Ethernet PHY interface selection, 3 bits: [23:21]
 
 /*
  * SBS_PMCR ETH_PHYSEL values
  */
-#define SBS_PMCR_ETH_PHYSEL_MII		0U		// 000: GMII or MII
-#define SBS_PMCR_ETH_PHYSEL_RMII	4U		// 100: RMII
+#define SBS_PMCR_ETH_PHYSEL_MII			0U		// 000: GMII or MII
+#define SBS_PMCR_ETH_PHYSEL_RMII		4U		// 100: RMII
+
+/* -------------------------------------------------------------------------- */
+/* RCC bit position macros                                                    */
+/* -------------------------------------------------------------------------- */
+/*
+ * RCC_CR bit positions
+ */
+#define RCC_CR_HSION					0U
+#define RCC_CR_HSIKERON					1U
+#define RCC_CR_HSIRDY					2U
+#define RCC_CR_HSIDIV					3U		//00 Division by 1, hsi(_ker)_ck = 64MHz (default after reset), 1U = 32Mhz, 2U = 16MHz,  3U = 8MHz
+#define RCC_CR_HSIDIVF					5U
+
+#define RCC_CR_CSION					7U
+#define RCC_CR_CSIRDY					8U
+#define RCC_CR_CSIKERON					9U
+
+#define RCC_CR_HSI48ON					12U
+#define RCC_CR_HSI48RDY					13U
+
+#define RCC_CR_HSEON					16U
+#define RCC_CR_HSERDY					17U
+#define RCC_CR_HSEBYP					18U
+#define RCC_CR_HSEEXT					19U
+#define RCC_CR_HSECSSON					20U
+
+#define RCC_CR_PLL1ON					24U
+#define RCC_CR_PLL1RDY					25U
+#define RCC_CR_PLL2ON					26U
+#define RCC_CR_PLL2RDY					27U
+#define RCC_CR_PLL3ON					28U
+#define RCC_CR_PLL3RDY					29U
+
+/*
+ * RCC_CFGR bit positions
+ */
+#define RCC_CFGR_SW						0U
+#define RCC_CFGR_SWS					3U
+#define RCC_CFGR_STOPWUCK				6U
+#define RCC_CFGR_STOPKERWUCK			7U
+#define RCC_CFGR_RTCPRE					8U
+#define RCC_CFGR_TIMPRE					15U
+#define RCC_CFGR_MCO1PRE				18U
+#define RCC_CFGR_MCO1SEL				22U
+#define RCC_CFGR_MCO2PRE				25U
+#define RCC_CFGR_MCO2SEL				29U
+
+/*
+ * @RCC_CFGR_SW_VALUES
+ * RCC Clock Configuration Register System Clock Switch Values (3 bits)
+ */
+#define RCC_CFGR_SW_HSI					0U	// 000: Default after reset
+#define RCC_CFGR_SW_CSI					1U	// 001
+#define RCC_CFGR_SW_HSE					2U	// 010
+#define RCC_CFGR_SW_PLL1				3U	// 011
+
+/*
+ * RCC_PLLCKSELR bit positions
+ */
+#define RCC_PLLCKSELR_PLLSRC			0U
+#define RCC_PLLCKSELR_DIVM1				4U
+#define RCC_PLLCKSELR_DIVM2				12U
+#define RCC_PLLCKSELR_DIVM3				20U
+
+/*
+ * @RCC_PLLCKSELR_PLLSRC_VALUES
+ * RCC PLLs clock source selection register DIVMx and PLLs clock source selection (2 bits)
+ */
+#define RCC_PLLCKSELR_PLLSRC_HSI		0U	// HSI selected as PLL clock (Default)
+#define RCC_PLLCKSELR_PLLSRC_CSI		1U	// CSI selected as PLL clock
+#define RCC_PLLCKSELR_PLLSRC_HSE		2U  // HSE selected as PLL clock
+#define RCC_PLLCKSELR_PLLSRC_NONE		3U	// No clock send to DIVMx divider and PLLs (in order to save power, when no PLL is used PLLSRC must be set to 0b11
+
+/*
+ * RCC_PLLCFGR bit positions
+ */
+#define RCC_PLLCFGR_PLL1FRACEN			0U	// PLL1 fractional latch enable
+#define RCC_PLLCFGR_PLL1VCOSEL			1U	// PLL1 VCO selection
+#define RCC_PLLCFGR_PLL1SSCGEN			2U	// PLL1 SSCG enable
+#define RCC_PLLCFGR_PLL1RGE				3U	// PLL1 input frequency range
+#define RCC_PLLCFGR_PLL1PEN				5U	// PLL1 DIVP divider output enable
+#define RCC_PLLCFGR_PLL1QEN				6U	// PLL1 DIVQ divider output enable
+#define RCC_PLLCFGR_PLL1SEN				8U	// PLL1 DIVS divider output enable
+
+#define RCC_PLLCFGR_PLL2FRACEN			11U	// PLL2 fractional latch enable
+#define RCC_PLLCFGR_PLL2VCOSEL			12U	// PLL2 VCO selection
+#define RCC_PLLCFGR_PLL2SSCGEN			13U	// PLL2 SSCG enable
+#define RCC_PLLCFGR_PLL2RGE				14U	// PLL2 input frequency range
+#define RCC_PLLCFGR_PLL2PEN				16U	// PLL2 DIVP divider output enable
+#define RCC_PLLCFGR_PLL2QEN				17U	// PLL2 DIVQ divider output enable
+#define RCC_PLLCFGR_PLL2REN				18U	// PLL2 DIVR divider output enable
+#define RCC_PLLCFGR_PLL2SEN				19U	// PLL2 DIVS divider output enable
+#define RCC_PLLCFGR_PLL2TEN				20U	// PLL2 DIVT divider output enable
+
+#define RCC_PLLCFGR_PLL3FRACEN			22U	// PLL3 fractional latch enable
+#define RCC_PLLCFGR_PLL3VCOSEL			23U	// PLL3 VCO selection
+#define RCC_PLLCFGR_PLL3SSCGEN			24U	// PLL3 SSCG enable
+#define RCC_PLLCFGR_PLL3RGE				25U	// PLL3 input frequency range
+#define RCC_PLLCFGR_PLL3PEN				27U	// PLL3 DIVP divider output enable
+#define RCC_PLLCFGR_PLL3QEN				28U	// PLL3 DIVQ divider output enable
+#define RCC_PLLCFGR_PLL3REN				29U	// PLL3 DIVR divider output enable
+#define RCC_PLLCFGR_PLL3SEN				30U	// PLL3 DIVS divider output enable
+
+/*
+ * @RCC_PLLCFGR_PLLxVCOSEL_VALUES
+ * VCOH: working from 384 to 1672 MHz (Fref1_ck must be between 2 and 16 MHz)
+ * VCOL: working from 150 to 420 MHz (Fref1_ck must be between 1 and 2 MHz)
+ */
+#define RCC_PLLCFGR_PLLxVCOSEL_VCOH		0U
+#define RCC_PLLCFGR_PLLxVCOSEL_VCOL		1U
+
+
+/*
+ * @RCC_PLLCFGR_PLLxRGE_VALUES
+ * 00: PLL1 input (ref1_ck) clock range frequency between 1 and 2 MHz (default after reset)
+ * 01: PLL1 input (ref1_ck) clock range frequency between 2 and 4 MHz
+ * 10: PLL1 input (ref1_ck) clock range frequency between 4 and 8 MHz
+ * 11: PLL1 input (ref1_ck) clock range frequency between 8 and 16 MHz
+ */
+#define RCC_PLLCFGR_PLLxRGE_1to2M		0U
+#define RCC_PLLCFGR_PLLxRGE_2to4M		1U
+#define RCC_PLLCFGR_PLLxRGE_4to8M		2U
+#define RCC_PLLCFGR_PLLxRGE_8to16M		3U
+
+/*
+ * RCC_PLL1DIVR1 bit positions
+ */
+#define RCC_PLL1DIVR1_DIVN              0U		// Divide to (9 bit value) + 1
+#define RCC_PLL1DIVR1_DIVP              9U
+#define RCC_PLL1DIVR1_DIVQ              16U
+
+/*
+ * RCC_CDCFGR bit positions
+ */
+#define RCC_CDCFGR_CPRE					0U
+
+/*
+ * @RCC_CDCFGR_CPRE_VALUES
+ * <!After changing this prescaler value, it takes up to 16 periods of the slowest APB clock before the
+ * new division ratio is taken into account. The application can check if the new division factor is taken
+ * into account by reading back this register.>
+ */
+#define RCC_CDCFGR_CPRE_DIV1			0U
+#define RCC_CDCFGR_CPRE_DIV2			8U
+#define RCC_CDCFGR_CPRE_DIV4			9U
+#define RCC_CDCFGR_CPRE_DIV8			10U
+#define RCC_CDCFGR_CPRE_DIV16			11U
+#define RCC_CDCFGR_CPRE_DIV64			12U
+#define RCC_CDCFGR_CPRE_DIV128			13U
+#define RCC_CDCFGR_CPRE_DIV256			14U
+#define RCC_CDCFGR_CPRE_DIV512			15U
+
+/*
+ * RCC_BMCFGR bit positions
+ */
+#define RCC_BMCFGR_BMPRE				0U
+
+/*
+ * @RCC_BMCFGR_BMPRE_VALUES
+ * <!Set and reset by software to control the division factor of rcc_hclk[5:1] and rcc_aclk. This group of
+ * clocks is also named sys_bus_ck. Changing this division ratio has an impact on the frequency of
+ * all bus matrix clocks.>
+ */
+#define RCC_BMCFGR_BMPRE_DIV1			0U
+#define RCC_BMCFGR_BMPRE_DIV2			8U
+#define RCC_BMCFGR_BMPRE_DIV4			9U
+#define RCC_BMCFGR_BMPRE_DIV8			10U
+#define RCC_BMCFGR_BMPRE_DIV16			11U
+#define RCC_BMCFGR_BMPRE_DIV64			12U
+#define RCC_BMCFGR_BMPRE_DIV128			13U
+#define RCC_BMCFGR_BMPRE_DIV256			14U
+#define RCC_BMCFGR_BMPRE_DIV512			15U
+
+/*
+ * RCC_APBCFGR bit positions
+ */
+#define RCC_APBCFGR_PPRE1				0U
+#define RCC_APBCFGR_PPRE2				4U
+#define RCC_APBCFGR_PPRE4				8U
+#define RCC_APBCFGR_PPRE5				12U
+
+/*
+ * @RCC_APBCFGR_PPREx_VALUES
+ * CPU domain APBX prescalers
+ */
+#define RCC_APBCFGR_PPREx_DIV1			0U // sys_bus_ck (default after reset)
+#define RCC_APBCFGR_PPREx_DIV2			4U // sys_bus_ck / 2
+#define RCC_APBCFGR_PPREx_DIV4			5U // sys_bus_ck / 4
+#define RCC_APBCFGR_PPREx_DIV8			6U // sys_bus_ck / 8
+#define RCC_APBCFGR_PPREx_DIV16			7U // sys_bus_ck / 16
+
+/* -------------------------------------------------------------------------- */
+/* FLASH bit position macros                                                  */
+/* -------------------------------------------------------------------------- */
+/*
+ * FLASH_ACR bit positions
+ */
+#define FLASH_ACR_LATENCY	            0U
+#define FLASH_ACR_WRHIGHFREQ            4U
+
+/*
+ * FLASH_ACR masks
+ */
+#define FLASH_ACR_LATENCY_MSK           (0xFUL << FLASH_ACR_LATENCY)
+#define FLASH_ACR_WRHIGHFREQ_MSK        (0x3UL << FLASH_ACR_WRHIGHFREQ)
+
+/*
+ * FLASH_ACR LATENCY values
+ */
+#define FLASH_ACR_LATENCY_0WS           0x0U
+#define FLASH_ACR_LATENCY_1WS           0x1U
+#define FLASH_ACR_LATENCY_2WS           0x2U
+#define FLASH_ACR_LATENCY_3WS           0x3U
+#define FLASH_ACR_LATENCY_4WS           0x4U
+#define FLASH_ACR_LATENCY_5WS           0x5U
+#define FLASH_ACR_LATENCY_6WS           0x6U
+#define FLASH_ACR_LATENCY_7WS           0x7U
+
+/*
+ * FLASH_ACR WRHIGHFREQ values
+ */
+#define FLASH_ACR_WRHIGHFREQ_00         0x0U
+#define FLASH_ACR_WRHIGHFREQ_01         0x1U
+#define FLASH_ACR_WRHIGHFREQ_10         0x2U
+#define FLASH_ACR_WRHIGHFREQ_11         0x3U
+
+/* -------------------------------------------------------------------------- */
+/* PWR bit position macros                                                    */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * PWR_SR1 bit positions
+ */
+#define PWR_SR1_ACTVOSRDY               13U
+
+/*
+ * PWR_CSR4 bit positions
+ */
+#define PWR_CSR4_VOS                    0U
+#define PWR_CSR4_VOSRDY                 1U
+
+/*
+ * @PWR_CSR4_VOS_VALUES
+ */
+#define PWR_CSR4_VOS_LOW                0U
+#define PWR_CSR4_VOS_HIGH               1U
 
 /* -------------------------------------------------------------------------- */
 /* Ethernet bit position macros                                               */

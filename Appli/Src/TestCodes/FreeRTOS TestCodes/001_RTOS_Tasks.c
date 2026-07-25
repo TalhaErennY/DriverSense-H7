@@ -28,7 +28,7 @@ void Test_001_RTOS_Tasks(void){
 
 	vTaskStartScheduler();
 
-	//if the control comes here then the launch fot he scheduler has failed due to insufficient memory in the heap
+	//Ff the control comes here then the launch of the scheduler has failed due to insufficient memory in the heap
 	while(1);
 }
 

@@ -23,11 +23,15 @@ void Test_010_ETH_ARP_Parse(void);
 void Test_011_ETH_Raw_Frame_TX(void);
 void Test_012_ETH_ICMP_Echo(void);
 
+void Test_013_RCC_ClockConfiguration(void);
+
 void Test_000_ETH_Forza_Test(void);
 void Test_020_ForzaDB_App_Test(void);
 
 //FreeRTOS Test Codes
 void Test_001_RTOS_Tasks(void);
+void Test_002_RTOS_Led(void);
+void Test_003_RTOS_TriLED(void);
 
 
 #endif /* TESTCODES_H_ */

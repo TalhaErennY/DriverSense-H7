@@ -17,11 +17,13 @@
  */
 
 #include <stdint.h>
-#include "stm32h7sxx.h"
 #include "TestCodes.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "stm32h7sxx.h"
+#include "stm32h7sxx_helpers.h"
 
-static void CPU_ClearFaultStatus(void);
-
+//Debug variables for Fault Status
 volatile uint32_t dbg_cfsr;
 volatile uint32_t dbg_hfsr;
 volatile uint32_t dbg_dfsr;
@@ -50,29 +52,23 @@ int main(void){
 	//Test_011_ETH_Raw_Frame_TX();
 	//Test_012_ETH_ICMP_Echo();
 
+	/*RCC Driver Test Functions*/
+	//Test_013_RCC_ClockConfiguration();
+
 	/*FreeRTOS Test Functions*/
 	//Test_001_RTOS_Tasks();
+	//Test_002_RTOS_Led();
+	Test_003_RTOS_TriLED();
 
 	/*Forza Test*/
 	//Test_000_ETH_Forza_Test();
-	Test_020_ForzaDB_App_Test();
+	//Test_020_ForzaDB_App_Test();
 
 
 
     while(1);
 
     return 0;
-}
-
-static void CPU_ClearFaultStatus(void){
-    /*
-     * CFSR: write 1 to clear fault bits
-     * HFSR: write 1 to clear fault bits
-     * DFSR: write 1 to clear debug fault bits
-     */
-    *((volatile uint32_t *)0xE000ED28UL) = 0xFFFFFFFFUL; /* CFSR */
-    *((volatile uint32_t *)0xE000ED2CUL) = 0xFFFFFFFFUL; /* HFSR */
-    *((volatile uint32_t *)0xE000ED30UL) = 0xFFFFFFFFUL; /* DFSR */
 }
 
 void BusFault_Handler(void)
