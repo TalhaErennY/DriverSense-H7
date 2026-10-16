@@ -25,6 +25,10 @@ void Test_012_ETH_ICMP_Echo(void);
 
 void Test_013_RCC_ClockConfiguration(void);
 
+void Test_014_SPI_Loopback(void);
+
+void Test_015_SDMMC_CMD(void);
+
 void Test_000_ETH_Forza_Test(void);
 void Test_020_ForzaDB_App_Test(void);
 
@@ -32,6 +36,8 @@ void Test_020_ForzaDB_App_Test(void);
 void Test_001_RTOS_Tasks(void);
 void Test_002_RTOS_Led(void);
 void Test_003_RTOS_TriLED(void);
+void Test_004_RTOS_ForzaDB_App(void);
+void Test_005_RTOS_ForzaDB_Queue(void);
 
 
 #endif /* TESTCODES_H_ */

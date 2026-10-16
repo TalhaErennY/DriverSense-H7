@@ -377,8 +377,6 @@ void Test_020_ForzaDB_App_Test(void){
 
 								dbg_icmp_tx_stage = 1U;
 
-								dbg_icmp_send_ret = ETH_SendRawFrame(icmp_reply_frame, icmp_reply_len);
-
 								dbg_icmp_tx_stage = 2U;
 
 								if(ETH_SendRawFrame(icmp_reply_frame, icmp_reply_len) == 1U){

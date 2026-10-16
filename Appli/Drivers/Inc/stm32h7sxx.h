@@ -1464,9 +1464,12 @@ typedef struct{
 	__vo uint32_t CLKCR;			//0x004 SDMMC_CLKCR
 	__vo uint32_t ARGR;			//0x008 SDMMC_ARGR
 	__vo uint32_t CMDR;			//0x00C SDMMC_CMDR
-	__vo uint32_t RESPCMDR;			//0x010 SDMMC_RESPCMDR
-	uint32_t reserved_1[4];		//0x014-0x020 ---
-	__vo uint32_t DTIMER;			//0x024 SDMMC_DTIMER
+	__vo uint32_t RESPCMDR;          //0x010 SDMMC_RESPCMDR
+	__vo uint32_t RESP1R;            //0x014 SDMMC_RESP1R
+	__vo uint32_t RESP2R;            //0x018 SDMMC_RESP2R
+	__vo uint32_t RESP3R;            //0x01C SDMMC_RESP3R
+	__vo uint32_t RESP4R;            //0x020 SDMMC_RESP4R
+	__vo uint32_t DTIMER;            //0x024 SDMMC_DTIMER
 	__vo uint32_t DLENR;			//0x028 SDMMC_DLENR
 	__vo uint32_t DCTRL;			//0x02C SDMMC_DCTRL
 	__vo uint32_t DCNTR;			//0x030 SDMMC_DCNTR
@@ -2409,6 +2412,27 @@ typedef struct{
 #define RCC_PLL1DIVR1_DIVQ              16U
 
 /*
+ * RCC_PLL2DIVR1 bit positions
+ */
+#define RCC_PLL2DIVR1_DIVN			0U
+#define RCC_PLL2DIVR1_DIVP			9U
+#define RCC_PLL2DIVR1_DIVQ			16U
+#define RCC_PLL2DIVR1_DIVR			24U
+
+
+/*
+ * RCC_PLL2DIVR2 bit positions
+ */
+#define RCC_PLL2DIVR2_DIVS			0U
+#define RCC_PLL2DIVR2_DIVT			8U
+
+
+/*
+ * RCC_CCIPR1 bit positions
+ */
+#define RCC_CCIPR1_SDMMC12SEL		2U
+
+/*
  * RCC_CDCFGR bit positions
  */
 #define RCC_CDCFGR_CPRE					0U
@@ -2467,6 +2491,19 @@ typedef struct{
 #define RCC_APBCFGR_PPREx_DIV4			5U // sys_bus_ck / 4
 #define RCC_APBCFGR_PPREx_DIV8			6U // sys_bus_ck / 8
 #define RCC_APBCFGR_PPREx_DIV16			7U // sys_bus_ck / 16
+
+/*
+ * Bit position definitions for RCC_CCIPR3
+ */
+#define RCC_CCIPR3_SPI1SEL                  8U
+
+#define RCC_CCIPR3_SPI1SEL_PLL1Q            0U
+#define RCC_CCIPR3_SPI1SEL_PLL2P            1U
+#define RCC_CCIPR3_SPI1SEL_PLL3P            2U
+#define RCC_CCIPR3_SPI1SEL_I2S_CKIN         3U
+#define RCC_CCIPR3_SPI1SEL_PERCK            4U
+
+#define RCC_CCIPR3_SPI1SEL_MSK              (0x7UL << RCC_CCIPR3_SPI1SEL)
 
 /* -------------------------------------------------------------------------- */
 /* FLASH bit position macros                                                  */
@@ -2769,6 +2806,182 @@ typedef struct{
 #define ETH_DMACRXCR_RBSZ				1U		// Receive buffer size, bits [14:1]
 #define ETH_DMACRXCR_RBSZ_MASK			(0x3FFFUL << ETH_DMACRXCR_RBSZ)
 
+/* -------------------------------------------------------------------------- */
+/* SPI bit position macros                                                    */
+/* -------------------------------------------------------------------------- */
+/*
+ * Bit position definitions for SPI_CR1
+ */
+#define SPI_CR1_SPE						0U		// Serial peripheral enable
+#define SPI_CR1_MASRX					8U		// Master automatic suspension in Receive mode
+#define SPI_CR1_CSTART					9U		// master transfer start
+#define SPI_CR1_CSUSP					10U		// master suspend request
+#define SPI_CR1_HDDIR					11U		// Rx/Tx irection at half-duplex mode
+#define SPI_CR1_SSI						12U		// internal slave select signal input level
+#define SPI_CR1_CRC33_17				13U		// full size ((33-bit or 17-bit) CRC plynomial configuration
+#define SPI_CR1_RCRCINI					14U		// CRC Calculation pattern control for receiver
+#define SPI_CR1_TCRCINI					15U		// CRC Calculation pattern control for transmitter
+#define SPI_CR1_IOLOCK					16U		// Locking the AF configuration of associated I/Os
+
+/*
+ * Bit position definitions for SPI_CR2
+ */
+#define SPI_CR2_TSIZE					0U		//Number of data at current transfer
+
+#define SPI_CR2_TSIZE_MSK				(0xFFFFUL << SPI_CR2_TSIZE)
+
+/*
+ * Bit position definitions for SPI_CFG1
+ */
+#define SPI_CFG1_DSIZE					0U
+#define SPI_CFG1_FTHLV					5U
+#define SPI_CFG1_UDRCFG					9U
+#define SPI_CFG1_RXDMAEN				14U
+#define SPI_CFG1_TXDMAEN				15U
+#define SPI_CFG1_CRCSIZE				16U
+#define SPI_CFG1_CRCEN					22U
+#define SPI_CFG1_MBR					28U
+#define SPI_CFG1_BPASS					31U
+
+#define SPI_CFG1_DSIZE_MSK				(0x1FUL << SPI_CFG1_DSIZE)
+#define SPI_CFG1_FTHLV_MSK				(0xFUL << SPI_CFG1_FTHLV)
+#define SPI_CFG1_CRCSIZE_MSK			(0x1FUL << SPI_CFG1_CRCSIZE)
+#define SPI_CFG1_MBR_MSK				(0x7UL << SPI_CFG1_MBR)
+
+/*
+ * Bit position definitions for SPI_CFG2
+ */
+#define SPI_CFG2_MSSI					0U		// Master SS idleness
+#define SPI_CFG2_MIDI					4U		// Master inter-data idleness
+
+#define SPI_CFG2_RDIOM					13U		// RDY signal input/output management
+#define SPI_CFG2_RDIOP					14U		// RDY signal input/output polarity
+#define SPI_CFG2_IOSWP					15U		// MISO and MOSI swap
+
+#define SPI_CFG2_COMM					17U		// SPI communication mode
+#define SPI_CFG2_SP						19U		// Serial protocol
+#define SPI_CFG2_MASTER					22U		// SPI master selection
+#define SPI_CFG2_LSBFRST				23U		// Data frame format
+#define SPI_CFG2_CPHA					24U		// Clock phase
+#define SPI_CFG2_CPOL					25U		// Clock polarity
+#define SPI_CFG2_SSM					26U		// Software slave management
+#define SPI_CFG2_SSIOP					28U		// SS input/output polarity
+#define SPI_CFG2_SSOE					29U		// SS output enable
+#define SPI_CFG2_SSOM					30U		// SS output management
+#define SPI_CFG2_AFCNTR					31U		// Alternate function GPIO control
+
+#define SPI_CFG2_MSSI_MSK				(15UL << SPI_CFG2_MSSI)
+#define SPI_CFG2_MIDI_MSK				(15UL << SPI_CFG2_MIDI)
+#define SPI_CFG2_COMM_MSK				(3UL << SPI_CFG2_COMM)
+#define SPI_CFG2_SP_MSK					(7UL << SPI_CFG2_SP)
+
+/*
+ * Bit position definitions/masks for SPI_IER
+ */
+#define SPI_IER_RXPIE					0U		// Rx packet interrupt enable
+#define SPI_IER_TXPIE					1U		// Tx packet interrupt enable
+#define SPI_IER_DXPIE					2U		// Duplex packet interrupt enable
+#define SPI_IER_EOTIE					3U		// End of transfer interrupt enable
+#define SPI_IER_TXTFIE					4U		// Transmission transfer filled interrupt enable
+#define SPI_IER_UDRIE					5U		// Underrun interrupt enable
+#define SPI_IER_OVRIE					6U		// Overrun interrupt enable
+#define SPI_IER_CRCEIE					7U		// CRC error interrupt enable
+#define SPI_IER_TIFREIE					8U		// TI frame format error interrupt enable
+#define SPI_IER_MODFIE					9U		// Mode fault interrupt enable
+
+/*
+ * Bit position definitions for SPI_SR
+ */
+#define SPI_SR_RXP						0U		// Rx packet available
+#define SPI_SR_TXP						1U		// Tx packet space available
+#define SPI_SR_DXP						2U		// Duplex packet available
+#define SPI_SR_EOT						3U		// End of transfer
+#define SPI_SR_TXTF						4U		// Transmission transfer filled
+#define SPI_SR_UDR						5U		// Underrun
+#define SPI_SR_OVR						6U		// Overrun
+#define SPI_SR_CRCE						7U		// CRC error
+#define SPI_SR_TIFRE					8U		// TI frame format error
+#define SPI_SR_MODF						9U		// Mode fault
+#define SPI_SR_SUSP						11U		// Suspension status
+#define SPI_SR_TXC						12U		// Tx complete
+#define SPI_SR_RXPLVL					13U		// RxFIFO packing level
+#define SPI_SR_RXWNE					15U		// RxFIFO word not empty
+#define SPI_SR_CTSIZE					16U		// Number of remaining data frames
+
+#define SPI_SR_RXPLVL_MSK				(3UL << SPI_SR_RXPLVL)
+#define SPI_SR_CTSIZE_MSK				(0xFFFFUL << SPI_SR_CTSIZE)
+
+
+/*
+ * Bit position definitions for SPI_IFCR
+ */
+#define SPI_IFCR_EOTC					3U		// End of transfer flag clear
+#define SPI_IFCR_TXTFC					4U		// Transmission transfer filled flag clear
+#define SPI_IFCR_UDRC					5U		// Underrun flag clear
+#define SPI_IFCR_OVRC					6U		// Overrun flag clear
+#define SPI_IFCR_CRCEC					7U		// CRC error flag clear
+#define SPI_IFCR_TIFREC					8U		// TI frame format error flag clear
+#define SPI_IFCR_MODFC					9U		// Mode fault flag clear
+#define SPI_IFCR_SUSPC					11U		// Suspend flag clear
+
+/*
+ * Bit position definitions/masks for SPI_TXDR
+ */
+#define SPI_TXDR						0U		// Transmit data
+
+/*
+ * Bit position definitions/masks for SPI_RXDR
+ */
+#define SPI_RXDR						0U		// Receive data
+
+/*
+ * Bit position definitions/masks for SPI_CRCPOLY
+ */
+#define SPI_CRCPOLY						0U		// CRC polynomial
+
+/*
+ * Bit position definitions/masks for SPI_TXCRC
+ */
+#define SPI_TXCRC						0U		// Transmitter CRC value
+
+/*
+ * Bit position definitions/masks for SPI_RXCRC
+ */
+#define SPI_RXCRC						0U		// Receiver CRC value
+
+/*
+ * Bit position definitions/masks for SPI_UDRDR
+ */
+#define SPI_UDRDR						0U		// Data at slave underrun condition
+
+/*
+ * Bit position definitions/masks for SPI_I2SCFGR
+ */
+#define SPI_I2SCFGR_I2SMOD				0U		// I2S mode selection
+#define SPI_I2SCFGR_I2SCFG				1U		// I2S configuration mode
+#define SPI_I2SCFGR_I2SSTD				4U		// I2S standard selection
+#define SPI_I2SCFGR_PCMSYNC				7U		// PCM frame synchronization
+#define SPI_I2SCFGR_DATLEN				8U		// Data length
+#define SPI_I2SCFGR_CHLEN				10U		// Channel length
+#define SPI_I2SCFGR_CKPOL				11U		// Serial audio clock polarity
+#define SPI_I2SCFGR_FIXCH				12U		// Fixed channel length in slave mode
+#define SPI_I2SCFGR_WSINV				13U		// Word select inversion
+#define SPI_I2SCFGR_DATFMT				14U		// Data alignment format
+#define SPI_I2SCFGR_I2SDIV				16U		// I2S linear prescaler
+#define SPI_I2SCFGR_ODD					24U		// Odd factor for prescaler
+#define SPI_I2SCFGR_MCKOE				25U		// Master clock output enable
+
+#define SPI_I2SCFGR_I2SCFG_MSK			(0x7UL << SPI_I2SCFGR_I2SCFG)
+#define SPI_I2SCFGR_I2SSTD_MSK			(0x3UL << SPI_I2SCFGR_I2SSTD)
+#define SPI_I2SCFGR_DATLEN_MSK			(0x3UL << SPI_I2SCFGR_DATLEN)
+#define SPI_I2SCFGR_I2SDIV_MSK			(0xFFUL << SPI_I2SCFGR_I2SDIV)
+
+/*
+ * Flag definitions for SPI_SR
+ */
+#define SPI_SR_TXC_FLAG					(1UL << SPI_SR_TXC)
+#define SPI_SR_RXP_FLAG					(1UL << SPI_SR_RXP)
+#define SPI_SR_EOT_FLAG					(1UL << SPI_SR_EOT)
 
 /* -------------------------------------------------------------------------- */
 /* I2C bit position macros                                                    */
@@ -2903,6 +3116,125 @@ typedef struct{
  * Bit position definitions for I2C_TXDR
  */
 #define I2C_TXDR_TXDATA             	0U      // 8-bit transmit data
+
+/* -------------------------------------------------------------------------- */
+/* SDMMC bit position macros                                                  */
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* SDMMC bit position macros                                                  */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * SDMMC_POWER bit positions
+ */
+#define SDMMC_POWER_PWRCTRL				0U
+#define SDMMC_POWER_VSWITCH				2U
+#define SDMMC_POWER_VSWITCHEN			3U
+#define SDMMC_POWER_DIRPOL				4U
+
+
+/*
+ * SDMMC_CLKCR bit positions
+ */
+#define SDMMC_CLKCR_CLKDIV				0U
+#define SDMMC_CLKCR_PWRSAV				12U
+#define SDMMC_CLKCR_WIDBUS				14U
+#define SDMMC_CLKCR_NEGEDGE				16U
+#define SDMMC_CLKCR_HWFC_EN				17U
+#define SDMMC_CLKCR_DDR					18U
+#define SDMMC_CLKCR_BUSSPEED			19U
+#define SDMMC_CLKCR_SELCLKRX			20U
+
+
+/*
+ * SDMMC_CMDR bit positions
+ */
+#define SDMMC_CMDR_CMDINDEX				0U
+#define SDMMC_CMDR_CMDTRANS				6U
+#define SDMMC_CMDR_CMDSTOP				7U
+#define SDMMC_CMDR_WAITRESP				8U
+#define SDMMC_CMDR_WAITINT				10U
+#define SDMMC_CMDR_WAITPEND				11U
+#define SDMMC_CMDR_CPSMEN				12U
+#define SDMMC_CMDR_DTHOLD				13U
+#define SDMMC_CMDR_BOOTMODE				14U
+#define SDMMC_CMDR_BOOTEN				15U
+#define SDMMC_CMDR_CMDSUSPEND			16U
+
+
+/*
+ * SDMMC_DCTRL bit positions
+ */
+#define SDMMC_DCTRL_DTEN				0U
+#define SDMMC_DCTRL_DTDIR				1U
+#define SDMMC_DCTRL_DTMODE				2U
+#define SDMMC_DCTRL_DBLOCKSIZE			4U
+#define SDMMC_DCTRL_RWSTART				8U
+#define SDMMC_DCTRL_RWSTOP				9U
+#define SDMMC_DCTRL_RWMOD				10U
+#define SDMMC_DCTRL_SDIOEN				11U
+#define SDMMC_DCTRL_BOOTACKEN			12U
+#define SDMMC_DCTRL_FIFORST				13U
+
+
+/*
+ * SDMMC_STAR bit positions
+ */
+#define SDMMC_STAR_CCRCFAIL				0U
+#define SDMMC_STAR_DCRCFAIL				1U
+#define SDMMC_STAR_CTIMEOUT				2U
+#define SDMMC_STAR_DTIMEOUT				3U
+#define SDMMC_STAR_TXUNDERR				4U
+#define SDMMC_STAR_RXOVERR				5U
+#define SDMMC_STAR_CMDREND				6U
+#define SDMMC_STAR_CMDSENT				7U
+#define SDMMC_STAR_DATAEND				8U
+#define SDMMC_STAR_DHOLD				9U
+#define SDMMC_STAR_DBCKEND				10U
+#define SDMMC_STAR_DABORT				11U
+#define SDMMC_STAR_DPSMACT				12U
+#define SDMMC_STAR_CPSMACT				13U
+#define SDMMC_STAR_TXFIFOHE				14U
+#define SDMMC_STAR_RXFIFOHF				15U
+#define SDMMC_STAR_TXFIFOF				16U
+#define SDMMC_STAR_RXFIFOF				17U
+#define SDMMC_STAR_TXFIFOE				18U
+#define SDMMC_STAR_RXFIFOE				19U
+#define SDMMC_STAR_BUSYD0				20U
+#define SDMMC_STAR_BUSYD0END			21U
+#define SDMMC_STAR_SDIOIT				22U
+#define SDMMC_STAR_ACKFAIL				23U
+#define SDMMC_STAR_ACKTIMEOUT			24U
+#define SDMMC_STAR_VSWEND				25U
+#define SDMMC_STAR_CKSTOP				26U
+#define SDMMC_STAR_IDMATE				27U
+#define SDMMC_STAR_IDMABTC				28U
+
+
+/*
+ * SDMMC_ICR bit positions
+ */
+#define SDMMC_ICR_CCRCFAILC				0U
+#define SDMMC_ICR_DCRCFAILC				1U
+#define SDMMC_ICR_CTIMEOUTC				2U
+#define SDMMC_ICR_DTIMEOUTC				3U
+#define SDMMC_ICR_TXUNDERRC				4U
+#define SDMMC_ICR_RXOVERRC				5U
+#define SDMMC_ICR_CMDRENDC				6U
+#define SDMMC_ICR_CMDSENTC				7U
+#define SDMMC_ICR_DATAENDC				8U
+#define SDMMC_ICR_DHOLDC				9U
+#define SDMMC_ICR_DBCKENDC				10U
+#define SDMMC_ICR_DABORTC				11U
+#define SDMMC_ICR_BUSYD0ENDC			21U
+#define SDMMC_ICR_SDIOITC				22U
+#define SDMMC_ICR_ACKFAILC				23U
+#define SDMMC_ICR_ACKTIMEOUTC			24U
+#define SDMMC_ICR_VSWENDC				25U
+#define SDMMC_ICR_CKSTOPC				26U
+#define SDMMC_ICR_IDMATEC				27U
+#define SDMMC_ICR_IDMABTCC				28U
+
 
 /* -------------------------------------------------------------------------- */
 /* Interrupt IRQ number macros                                                */

@@ -161,6 +161,7 @@ void RCC_SystemClock_Config_280MHz_HSI(void){
      */
 	RCC->PLLCFGR |= (1UL << RCC_PLLCFGR_PLL1PEN);
 
+
     /*
      * 12. Switch SYSCLK source to PLL1.
      */
@@ -171,4 +172,141 @@ void RCC_SystemClock_Config_280MHz_HSI(void){
 		//Wait until PLL1 selected as SYSCLK source
 	}
 
+}
+
+/****************************************************************************
+ * @fn				- RCC_SDMMC_ClockConfig_50MHz
+ *
+ * @brief			- This function configures PLL2_S as 50 MHz
+ *					  kernel clock source for SDMMC1/SDMMC2
+ *
+ * @param[in]		- none
+ *
+ * @return			- none
+ *
+ * @Note			- HSI = 64 MHz
+ *					  DIVM2 register = 8  -> /8
+ *					  DIVN2 register = 49 -> x50
+ *					  DIVS2 register = 7  -> /8
+ *
+ */
+void RCC_SDMMC_ClockConfig_50MHz(void){
+
+	/*
+	 * PLL2_S must be disabled before changing DIVS2.
+	 */
+	RCC->PLLCFGR &= ~(1UL << RCC_PLLCFGR_PLL2SEN);
+
+
+	/*
+	 * Disable PLL2 before configuration.
+	 */
+	RCC->CR &= ~(1UL << RCC_CR_PLL2ON);
+
+	while((RCC->CR & (1UL << RCC_CR_PLL2RDY)) != 0U){
+		// Wait until PLL2 is disabled
+	}
+
+
+	/*
+	 * HSI = 64 MHz
+	 *
+	 * DIVM2 = 8
+	 *
+	 * PLL2 reference clock:
+	 *
+	 * 64 MHz / 8 = 8 MHz
+	 */
+	RCC->PLLCKSELR &=
+			~(0x3FUL << RCC_PLLCKSELR_DIVM2);
+
+	RCC->PLLCKSELR |=
+			(8UL << RCC_PLLCKSELR_DIVM2);
+
+
+	/*
+	 * PLL2 reference clock = 8 MHz
+	 *
+	 * Select 8 - 16 MHz PLL input range.
+	 */
+	RCC->PLLCFGR &=
+			~(0x3UL << RCC_PLLCFGR_PLL2RGE);
+
+	RCC->PLLCFGR |=
+			(RCC_PLLCFGR_PLLxRGE_8to16M
+			<< RCC_PLLCFGR_PLL2RGE);
+
+
+	/*
+	 * Select VCOH.
+	 */
+	RCC->PLLCFGR &=
+			~(1UL << RCC_PLLCFGR_PLL2VCOSEL);
+
+
+	/*
+	 * Disable fractional PLL.
+	 */
+	RCC->PLLCFGR &=
+			~(1UL << RCC_PLLCFGR_PLL2FRACEN);
+
+	RCC->PLL2FRACR = 0U;
+
+
+	/*
+	 * DIVN2 register = 49
+	 *
+	 * Actual multiplication factor:
+	 * DIVN2 + 1 = 50
+	 *
+	 * 8 MHz * 50 = 400 MHz VCO
+	 */
+	RCC->PLL2DIVR1 &=
+	        ~(0x1FFUL << RCC_PLL2DIVR1_DIVN);
+
+	RCC->PLL2DIVR1 |=
+	        (49UL << RCC_PLL2DIVR1_DIVN);
+
+
+	/*
+	 * DIVS2 register = 7
+	 *
+	 * Actual division factor:
+	 * DIVS2 + 1 = 8
+	 *
+	 * 400 MHz / 8 = 50 MHz
+	 */
+	RCC->PLL2DIVR2 &=
+	        ~(0x7UL << RCC_PLL2DIVR2_DIVS);
+
+	RCC->PLL2DIVR2 |=
+	        (7UL << RCC_PLL2DIVR2_DIVS);
+
+
+	/*
+	 * Enable PLL2_S output.
+	 */
+	RCC->PLLCFGR |=
+			(1UL << RCC_PLLCFGR_PLL2SEN);
+
+
+	/*
+	 * Enable PLL2.
+	 */
+	RCC->CR |=
+			(1UL << RCC_CR_PLL2ON);
+
+	while((RCC->CR &
+			(1UL << RCC_CR_PLL2RDY)) == 0U){
+		// Wait until PLL2 is ready
+	}
+
+
+	/*
+	 * SDMMC12SEL = 0
+	 *
+	 * SDMMC kernel clock = pll2_s_ck.
+	 */
+	RCC->CCIPR1 &=
+			~(1UL << RCC_CCIPR1_SDMMC12SEL);
 }

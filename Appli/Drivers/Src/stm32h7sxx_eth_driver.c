@@ -926,8 +926,7 @@ uint8_t ETH_ReadRawFrame(uint8_t **ppFrame, uint32_t *pLength){
 	 * Optional but recommended:
 	 * accept only complete frames.
 	 * FD = first descriptor, LD = last descriptor.
-	 * For your simple single-buffer RX design, both should be set.
-	 */
+     */
 	if (((desc3 & ETH_RDES3_WB_FD) == 0U) ||
 	    ((desc3 & ETH_RDES3_WB_LD) == 0U)){
 		ETH_ReleaseRXDescriptor();

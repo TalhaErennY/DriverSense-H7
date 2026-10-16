@@ -39,6 +39,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/Config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/OS}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/SEGGER}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/FatFs}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.1547137481" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -64,6 +65,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/SEGGER}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/Config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/OS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/FatFs}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.856544707" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -89,8 +91,8 @@
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec.566707074" name="MCU Output Converter Motorola S-rec with symbols" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec"/>
 						</toolChain>
 					</folderInfo>
-					<fileInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.924225892.583143854" name="020_ForzaDB_App.c" rcbsApplicability="disable" resourcePath="Src/TestCodes/020_ForzaDB_App.c" toolsToInvoke="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.33457249.2104711079">
-						<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.33457249.2104711079" name="MCU/MPU GCC Compiler" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.33457249"/>
+					<fileInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.924225892.517084662" name="015_SDMMC_CMD.c" rcbsApplicability="disable" resourcePath="Src/TestCodes/015_SDMMC_CMD.c" toolsToInvoke="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.33457249.475349518">
+						<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.33457249.475349518" name="MCU/MPU GCC Compiler" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.33457249"/>
 					</fileInfo>
 					<folderInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.924225892.1353442432" name="/" resourcePath="Peripherals">
 						<toolChain id="com.st.stm32cube.ide.mcu.gnu.managedbuild.toolchain.exe.debug.1823548021" name="MCU ARM GCC" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.toolchain.exe.debug" unusedChildren="">
@@ -133,7 +135,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Inc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Peripherals"/>
-						<entry excluding="TestCodes/020_ForzaDB_App.c|TestCodes/FreeRTOS TestCodes/002_RTOS_Led.c|TestCodes/013_RCC_ClkConf_Test.c|TestCodes/FreeRTOS TestCodes/001_RTOS_Tasks.c|TestCodes/012_ETH_ICMP_Echo.c|TestCodes/030_FreeRTOS_BasicStructure.c|TestCodes/002_Led_Button_Toggle.c|TestCodes/001_Led_Toggle.c|TestCodes/011_ETH_Raw_Frame_TX.c|TestCodes/010_ETH_ARP_Parse_Test.c|TestCodes/009_ETH_Frame_Parse_Test.c|TestCodes/000_ETH_Forza_Test.c|TestCodes/008_ETH_UDP_Payload.c|TestCodes/007_ETH_Raw_Frame_RX.c|TestCodes/006_ETH_DMA_Memory_Init.c|TestCodes/005_ETH_PHY_ID_Test.c|TestCodes/004_I2C_ssd1306.c|TestCodes/003_Led_Button_Toggle_IRQ.c|TestCodes/002Led_Button_Toggle.c|TestCodes/001Led_Toggle.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Src"/>
+						<entry excluding="TestCodes/015_SDMMC_CMD.c|TestCodes/014_SPI_Loopback.c|TestCodes/FreeRTOS TestCodes/005_RTOS_ForzaDB_Queue.c|TestCodes/FreeRTOS TestCodes/004_RTOS_ForzaDB_App.c|TestCodes/020_ForzaDB_App.c|TestCodes/FreeRTOS TestCodes/003_RTOS_TriLED.c|TestCodes/FreeRTOS TestCodes/002_RTOS_Led.c|TestCodes/013_RCC_ClkConf_Test.c|TestCodes/FreeRTOS TestCodes/001_RTOS_Tasks.c|TestCodes/012_ETH_ICMP_Echo.c|TestCodes/030_FreeRTOS_BasicStructure.c|TestCodes/002_Led_Button_Toggle.c|TestCodes/001_Led_Toggle.c|TestCodes/011_ETH_Raw_Frame_TX.c|TestCodes/010_ETH_ARP_Parse_Test.c|TestCodes/009_ETH_Frame_Parse_Test.c|TestCodes/000_ETH_Forza_Test.c|TestCodes/008_ETH_UDP_Payload.c|TestCodes/007_ETH_Raw_Frame_RX.c|TestCodes/006_ETH_DMA_Memory_Init.c|TestCodes/005_ETH_PHY_ID_Test.c|TestCodes/004_I2C_ssd1306.c|TestCodes/003_Led_Button_Toggle_IRQ.c|TestCodes/002Led_Button_Toggle.c|TestCodes/001Led_Toggle.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Src"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Startup"/>
 					</sourceEntries>
 				</configuration>
@@ -174,6 +176,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/FreeRTOS-Kernel/portable/GCC/ARM_CM7/r0p1}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/Config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/OS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/FatFs}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.196097886" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -195,6 +198,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/FreeRTOS-Kernel/portable/GCC/ARM_CM7/r0p1}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/Config}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/SEGGER/OS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/FatFs}&quot;"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1158774260" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>

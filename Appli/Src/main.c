@@ -55,10 +55,18 @@ int main(void){
 	/*RCC Driver Test Functions*/
 	//Test_013_RCC_ClockConfiguration();
 
+	/*SPI Driver Test Functions*/
+	//Test_014_SPI_Loopback();
+
+	/*SDMMC Driver Test Functions*/
+	Test_015_SDMMC_CMD();
+
 	/*FreeRTOS Test Functions*/
 	//Test_001_RTOS_Tasks();
 	//Test_002_RTOS_Led();
-	Test_003_RTOS_TriLED();
+	//Test_003_RTOS_TriLED();
+	//Test_004_RTOS_ForzaDB_App();
+	//Test_005_RTOS_ForzaDB_Queue();
 
 	/*Forza Test*/
 	//Test_000_ETH_Forza_Test();

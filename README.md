@@ -1,333 +1,166 @@
-# DriverSense-H7
+# DriverSense-H7 — Automotive Telemetry & Machine Learning System
 
-**Bare-metal STM32H7 telemetry engine with custom Ethernet networking, an OLED dashboard, FreeRTOS task architecture, and a roadmap toward TinyML-based driving analysis.**
+**Custom STM32H7 embedded software · Real-time vehicle telemetry · CNN autoencoders · On-device ML research**
 
 <p align="center">
-  <img src="docs/media/drivesenseh7-prot-demo.gif"
-       alt="DriverSense-H7 live Forza telemetry dashboard"
-       width="600">
+  <img src="docs/media/drivesenseh7-prot-demo.gif" alt="DriverSense-H7 live vehicle telemetry dashboard demo" width="600">
 </p>
 
-## Overview
+DriverSense-H7 is a personal research and development project combining **low-level embedded systems engineering** with **machine learning for automotive telemetry analysis**.
 
-DriverSense-H7 is an embedded systems project built around the STM32H7S3 microcontroller.
+The project has evolved from building a register-level Ethernet telemetry pipeline and OLED dashboard on an STM32H7 into a broader platform for **vehicle-state representation, driving-regime discovery, and resource-constrained on-device inference**.
 
-The system receives live vehicle telemetry from a PC over Ethernet, processes the packets directly on the STM32, and displays selected driving data on an SSD1306 OLED dashboard.
+Rather than treating machine learning as a replacement for conventional firmware, DriverSense-H7 explores how a custom real-time embedded platform can acquire and present telemetry while learned models extract useful representations from driving data.
 
-The project is developed primarily at register level using custom peripheral drivers and a minimal custom Ethernet stack rather than a high-level networking library.
+> **Development status — May 2026–present**  
+> **Embedded:** Custom Ethernet/networking and live OLED telemetry pipeline implemented; FreeRTOS and SystemView integrated.  
+> **Machine learning:** CNN autoencoder models trained for vehicle telemetry analysis and driving-regime discovery using causal time-series windows and Optuna hyperparameter optimization.  
+> **On-device ML:** Deployment of trained neural network encoders to STM32H7 is under investigation; **embedded inference is not yet presented as a completed feature**.
 
-The current implementation supports:
+## Project at a glance
 
-- Custom STM32H7Sxx peripheral drivers
-- Bare-metal Ethernet MAC, DMA, and PHY control
-- ARP and ICMP communication
-- UDP telemetry reception
-- Forza Data Out packet parsing
-- Real-time SSD1306 dashboard rendering
-- FreeRTOS-based task experiments
-- SEGGER SystemView task and timing analysis
+| Area | Current scope | Status |
+| --- | --- | --- |
+| Embedded networking | Custom RMII Ethernet MAC/DMA/PHY and ARP, IPv4, ICMP, UDP processing without LwIP | Implemented |
+| Real-time firmware | FreeRTOS tasks for telemetry reception and OLED updates; Cortex-M7 DMA/cache handling | Integrated |
+| Telemetry interface | Forza Data Out packet parsing and SSD1306 vehicle dashboard | Implemented |
+| Development diagnostics | ST-LINK debugging, SEGGER SystemView/RTT and DWT timing support | Integrated |
+| Machine learning research | CNN autoencoders, causal telemetry windows, Optuna hyperparameter optimization | Models trained |
+| Edge AI | Porting neural network encoders to STM32H7 for on-device inference | Under investigation |
+| Expansion | Telemetry logging, additional display options, vehicle-state analytics and track learning | Roadmap |
 
-The long-term roadmap includes telemetry logging, higher-level vehicle-state analysis, and TinyML inference for driving behavior and anomaly detection.
+## 1. Embedded telemetry platform
 
----
+The embedded subsystem runs on an **STM32H7S3L8 (Arm Cortex-M7)** using the **NUCLEO-H7S3L8** development board. A PC transmits live Forza Data Out telemetry over UDP. The microcontroller handles the Ethernet frames using custom C drivers and networking code, extracts vehicle signals, and renders them on an SSD1306 OLED.
 
-## Current Status
-
-The project has reached a working real-time telemetry dashboard milestone.
-
-The STM32 currently:
-
-1. Initializes the RMII Ethernet interface and LAN8742A PHY
-2. Receives raw Ethernet frames through DMA descriptors
-3. Responds to ARP requests
-4. Responds to ICMP Echo Requests
-5. Receives UDP telemetry packets
-6. Validates and parses Forza Data Out packets
-7. Extracts vehicle telemetry fields
-8. Renders the processed data on an SSD1306 OLED dashboard
-
-Verified communication includes:
+### Embedded data path
 
 ```text
-ARP resolution
-192.168.1.50 -> 02:00:00:00:00:01
-
-ICMP
-Reply from 192.168.1.50
-
-UDP telemetry
-Destination port: 5005
+Forza Horizon / Forza Data Out (PC)
+                |
+            UDP / IPv4
+                |
+        Ethernet / RMII PHY
+                |
+     STM32H7 Ethernet MAC + DMA
+                |
+      Custom network processing
+      ARP | IPv4 | ICMP | UDP
+                |
+       Forza telemetry parser
+                |
+        Dashboard data state
+                |
+        SSD1306 OLED display
 ```
 
----
+### Custom drivers and networking
 
-## System Architecture
+The firmware emphasizes register-level programming rather than relying on a complete high-level network stack.
+
+- **Peripheral drivers:** RCC, GPIO, EXTI, NVIC, I2C, SSD1306 display support, and DWT timing utilities.
+- **Ethernet interface:** RMII setup, LAN8742A PHY discovery and link management, MAC configuration, DMA descriptors, raw frame receive/transmit, and MTL queue configuration.
+- **Network protocols:** Ethernet II parsing, ARP request/reply handling, IPv4 parsing and filtering, ICMP echo request/reply support, and UDP payload extraction.
+- **Memory and cache coherency:** MPU-configured non-cacheable Ethernet RX memory; cacheable TX buffers with D-cache maintenance before DMA transmission; dedicated linker sections.
+- **RX architecture:** Ethernet hardware uses **DMA** for packet transfer, while firmware checks descriptor/frame availability through **polling**. DMA operation does not imply interrupt-driven receive processing.
+
+The Ethernet implementation is intentionally minimal and purpose-built. It is **not** a replacement for a full TCP/IP stack.
+
+### Live telemetry and dashboard
+
+The firmware validates and parses Forza Data Out telemetry, including engine RPM, speed, gear, steering, throttle/brake inputs, boost, tire-related signals, and distance. A reduced dashboard-state representation separates the telemetry decoder from display rendering.
+
+The **128 × 64 SSD1306 OLED** uses framebuffer-based graphics to display driving information, including speed, gear, RPM visualization, selected vehicle indicators, and network/telemetry status screens. The dashboard is an implemented demonstrator of the embedded pipeline, rather than the project's final scope.
+
+## 2. Real-time firmware and debugging
+
+**FreeRTOS 202604 LTS** is integrated with the Arm Cortex-M7 portable layer and `heap_4.c`. The current application uses separate tasks for **telemetry reception** and **display updates**. The low-level Ethernet path remains custom and DMA-backed.
+
+The project also incorporates:
+
+- **SEGGER SystemView and RTT** for observing task scheduling, context switches, and execution behavior.
+- **DWT cycle counter** support for timing and trace timestamps.
+- **ST-LINK / STM32CubeIDE** for flashing, debugging, and trace snapshot workflows.
+- **Task stack usage inspection** and FreeRTOS scheduling experiments.
+
+Further work will focus on stronger inter-task data exchange, timeouts, resilience, and end-to-end runtime profiling.
+
+## 3. Machine learning for vehicle telemetry
+
+The machine learning component investigates **representation learning from automotive time-series data**. Its current research direction goes beyond manually assigning fixed thresholds to every driving condition.
+
+### CNN autoencoder research
+
+CNN autoencoder models have been **trained** for vehicle telemetry analysis and **driving-regime discovery**. The workflow includes:
+
+- **Causal time-series windows**, constructed using historical telemetry samples rather than future observations.
+- **CNN autoencoder models** for learning compact representations of telemetry behavior.
+- **Optuna hyperparameter optimization** to explore model configurations.
+- Investigation of learned representations as a basis for understanding different vehicle operating regimes.
+
+This is an **offline model-development effort** at the current stage. Training a model does not, by itself, demonstrate successful STM32 deployment, real-time inference performance, or validated safety-critical predictions.
+
+### Toward on-device inference
+
+The next research step is to investigate deployment of **trained encoder networks** on the STM32H7, with attention to:
+
+- Model size and memory footprint.
+- CPU cost and inference latency.
+- Possible quantization and embedded inference runtimes.
+- Scheduling inference alongside Ethernet reception and display updates.
+- Comparing embedded encoder outputs with offline reference results.
+
+**No claim of completed on-device neural network inference is made at this stage.**
+
+## 4. System architecture and intended evolution
 
 ```text
-Forza Horizon
-      │
-      │ UDP telemetry
-      ▼
-PC Ethernet Interface
-      │
-      │ Raw Ethernet frames
-      ▼
-STM32H7 Ethernet MAC + DMA
-      │
-      ├── Ethernet II parsing
-      ├── ARP handling
-      ├── IPv4 filtering
-      ├── ICMP handling
-      └── UDP payload extraction
-                │
-                ▼
-       Forza Packet Parser
-                │
-                ▼
-      Reduced Dashboard State
-                │
-                ▼
-       SSD1306 OLED Renderer
+                     VEHICLE TELEMETRY
+                   Forza Data Out / UDP
+                            |
+                            v
+               +--------------------------+
+               | STM32H7 embedded platform|
+               | Ethernet MAC/DMA + PHY   |
+               | Custom ARP / IPv4 / UDP  |
+               +--------------------------+
+                            |
+                            v
+                  Telemetry processing
+                            |
+                 +----------+----------+
+                 |                     |
+                 v                     v
+           OLED dashboard       Future data services
+           (implemented)         / logging pipeline
+                                       |
+                                       v
+                           Encoder deployment research
+                           (not yet integrated on MCU)
+
+OFFLINE RESEARCH WORKFLOW
+Telemetry datasets -> causal windows -> CNN autoencoder training
+                   -> Optuna tuning -> learned representations
+                   -> candidate encoder for STM32 deployment
 ```
 
-The future architecture will separate these stages into FreeRTOS tasks and lightweight telemetry services.
+The offline learning workflow and the embedded runtime are **distinct parts of the project today**. Their integration is a development goal.
 
----
+## 5. Hardware and development environment
 
-## Hardware
+| Component | Technology |
+| --- | --- |
+| Microcontroller | STM32H7S3L8 / Arm Cortex-M7 |
+| Development board | NUCLEO-H7S3L8 |
+| Ethernet PHY/interface | LAN8742A / RMII |
+| Display | SSD1306 OLED, 128 × 64, I2C |
+| Embedded language | C |
+| IDE/debug | STM32CubeIDE, ST-LINK |
+| RTOS | FreeRTOS 202604 LTS |
+| Timing/trace | DWT, SEGGER SystemView, SEGGER RTT |
+| ML methods | CNN autoencoders, causal time-series windows, Optuna |
 
-- STM32H7S3L8H6
-- NUCLEO-H7S3L8
-- Arm Cortex-M7
-- LAN8742A Ethernet PHY
-- RMII Ethernet interface
-- SSD1306 128 × 64 OLED
-- I2C display connection
-- On-board STLINK-V3EC debugger
-
----
-
-## Software Environment
-
-- Bare-metal C
-- STM32CubeIDE
-- FreeRTOS 202604 LTS
-- SEGGER SystemView
-- SEGGER RTT
-- ST-LINK debugging
-- Register-level STM32 peripheral access
-
-SystemView traces are currently captured through snapshot analysis using ST-LINK and STM32CubeIDE.
-
----
-
-## Custom Driver Layer
-
-The project includes custom register-level drivers for the STM32H7Sxx family.
-
-### Implemented
-
-- STM32H7Sxx memory map definitions
-- RCC peripheral clock control
-- GPIO initialization and deinitialization
-- GPIO input and output APIs
-- BSRR-based GPIO writes
-- ODR-based GPIO toggle
-- EXTI interrupt configuration
-- NVIC interrupt configuration
-- I2C driver
-- SSD1306 OLED driver
-- DWT cycle-counter delay support
-- Ethernet MAC, DMA, and PHY driver
-
-### Planned
-
-- UART driver
-- SPI driver
-- SD card interface
-- Additional timer and DMA support
-
----
-
-## Ethernet Stack
-
-The project uses a custom minimal Ethernet implementation without LwIP.
-
-### MAC and DMA
-
-- RMII GPIO configuration
-- Ethernet peripheral clock setup
-- PHY address detection
-- PHY link-state polling
-- Auto-negotiation handling
-- MAC address configuration
-- DMA RX descriptor ring
-- DMA TX descriptor ring
-- MTL RX and TX queue configuration
-- Raw Ethernet frame reception
-- Raw Ethernet frame transmission
-
-### Cache and Memory Handling
-
-The Cortex-M7 data cache requires explicit coherency handling for Ethernet DMA.
-
-Current memory strategy:
-
-- MPU-based non-cacheable region for RX descriptors
-- MPU-based non-cacheable region for RX buffers
-- Separate cacheable TX buffer section
-- D-cache clean before DMA transmission
-- Dedicated linker sections for Ethernet memory
-
-### Network Protocol Support
-
-- Ethernet II frame parsing
-- ARP request parsing
-- ARP reply generation
-- IPv4 destination filtering
-- IPv4 header parsing
-- ICMP Echo Request parsing
-- ICMP Echo Reply generation
-- IPv4 checksum calculation
-- ICMP checksum calculation
-- UDP header parsing
-- UDP destination-port filtering
-- UDP payload extraction
-
----
-
-## Forza Telemetry Parser
-
-The parser currently supports fixed-size Forza Data Out packets.
-
-Implemented parsing includes:
-
-- Packet-size validation
-- Little-endian integer extraction
-- Little-endian floating-point extraction
-- Speed conversion from m/s to km/h
-- Current RPM
-- Maximum RPM
-- Gear
-- Throttle
-- Brake
-- Clutch
-- Handbrake
-- Steering
-- Tire slip values
-- Tire temperatures
-- Fuel level
-- Boost pressure
-- Distance traveled
-
-A reduced dashboard structure is used so that the OLED rendering layer does not depend directly on the complete Forza packet.
-
----
-
-## OLED Dashboard
-
-The dashboard is rendered using a framebuffer-based SSD1306 driver.
-
-### Rendering Features
-
-- 5 × 7 bitmap font
-- Large seven-segment-style numbers
-- Pixel drawing
-- Line drawing
-- Rectangle drawing
-- Filled rectangles
-- Horizontal and vertical bar indicators
-- Framebuffer-based screen updates
-
-### Dashboard Features
-
-- Startup information screen
-- Network status screen
-- Waiting-for-telemetry screen
-- Large speed display
-- Dynamic gear display
-- RPM arc scaled using vehicle maximum RPM
-- Turbo indicator
-- Fuel indicator
-- Distance display
-- Throttle and brake status
-- Tire slip warnings
-- Tire temperature information
-- Shift-up indicator
-- Shift-down indicator
-- Bottom warning and status bar
-
----
-
-## FreeRTOS Progress
-
-FreeRTOS has been integrated as the next step toward separating the telemetry pipeline into independent real-time components.
-
-Current FreeRTOS work includes:
-
-- FreeRTOS 202604 LTS integration
-- ARM Cortex-M7 portable layer
-- `heap_4.c` dynamic memory allocation
-- Task creation and scheduling tests
-- Multi-task LED timing test
-- `vTaskDelay()` timing experiments
-- Task stack monitoring
-- DWT-based runtime timestamp source
-
-Current test tasks run at different periods to verify scheduling behavior:
-
-```text
-LD1 task: 1000 ms
-LD2 task:  500 ms
-LD3 task:  100 ms
-```
-
-Planned task architecture:
-
-```text
-Ethernet RX Task
-      │
-      ▼
-Telemetry Parser Task
-      │
-      ▼
-Dashboard Update Task
-      │
-      ├── Warning Analysis
-      ├── Logging
-      └── Future TinyML Inference
-```
-
----
-
-## SEGGER SystemView
-
-SEGGER SystemView is used to inspect FreeRTOS scheduling behavior and execution timing.
-
-Current integration includes:
-
-- SEGGER RTT
-- SEGGER SystemView
-- FreeRTOS trace integration
-- DWT cycle counter as timestamp source
-- Cortex-M7 active exception tracking
-- Task execution visualization
-- SysTick visualization
-- Context-switch analysis
-- Snapshot capture through ST-LINK and STM32CubeIDE
-
-SystemView is currently used primarily to verify:
-
-- Task scheduling
-- Task execution duration
-- Delay behavior
-- Idle-task activity
-- Context switches
-- Interrupt timing
-
----
-
-## Current Network Configuration
+### Development network configuration
 
 ```text
 STM32 IPv4 address : 192.168.1.50
@@ -337,106 +170,39 @@ Ethernet PHY       : LAN8742A
 Interface          : RMII
 ```
 
----
+These are **development/test configuration values**, not a claim of automatic network configuration or a production-ready networking setup.
 
-## Current Milestone
+## 6. Development roadmap
 
-The current prototype demonstrates a complete basic telemetry path:
+### Embedded and real-time systems
 
-```text
-PC telemetry
-    -> Ethernet frame reception
-    -> IPv4 and UDP parsing
-    -> Forza packet decoding
-    -> Dashboard-state generation
-    -> OLED framebuffer rendering
-```
+- Strengthen task communication and telemetry timeout/recovery behavior.
+- Add more robust UDP and packet integrity checks, including UDP checksum validation.
+- Extend execution-time and stack-use measurements.
+- Develop SPI and SD-card support for logging and replay.
+- Evaluate an expanded display interface for richer visualization.
 
-This confirms that the STM32 can participate in basic IP communication and process live telemetry using a custom bare-metal networking implementation.
+### Machine learning and automotive analysis
 
----
+- Evaluate learned encoder representations across driving conditions.
+- Investigate model compression, quantization, and STM32H7 integration.
+- Benchmark memory usage, latency, and scheduling overhead on target hardware.
+- Explore applications such as driving behavior analysis, vehicle-state anomalies, and track-learning assistance.
 
-## Next Milestone
+Items above are **planned or investigative**, not completed production functionality.
 
-The next milestone is to convert the working pipeline into a more structured real-time architecture.
+## 7. Engineering objectives
 
-Planned work:
+DriverSense-H7 is intended to demonstrate and deepen practical experience in:
 
-- Separate Ethernet, parsing, and display logic into FreeRTOS tasks
-- Add queues or task notifications between pipeline stages
-- Improve UDP payload validation
-- Add UDP checksum verification using the IPv4 pseudo-header
-- Improve Forza packet validation and parser robustness
-- Add telemetry timeout detection
-- Add network reconnect handling
-- Improve OLED layout and warning icons
-- Add lightweight event and error counters
-- Add stack-usage monitoring
-- Add execution-time measurements with SystemView
-- Add SPI and SD card support
-- Prepare telemetry logging for offline analysis
+- Low-level embedded C and custom STM32 driver development.
+- Ethernet MAC/DMA descriptor handling and lightweight network protocol implementation.
+- Cortex-M7 MPU and cache coherency in DMA-based systems.
+- FreeRTOS task architecture and runtime debugging.
+- Real-time automotive telemetry acquisition and visualization.
+- ML experimentation with multivariate, causal time-series data.
+- Bridging offline model development with resource-constrained embedded inference.
 
----
+## Project status
 
-## TinyML Roadmap
-
-TinyML is a future inference layer and is not yet part of the current working prototype.
-
-Potential inference targets include:
-
-- Driving behavior classification
-- Traction-loss prediction
-- Tire-grip estimation
-- Brake-fade detection
-- Driver coaching
-- Powertrain anomaly detection
-- Unsafe vehicle-state detection
-- Lap and performance analysis
-- Track-learning support
-
-The initial approach is expected to use models trained offline on a PC and deployed to the STM32 for inference.
-
----
-
-## Planned Features
-
-- FreeRTOS telemetry task architecture
-- Queue-based telemetry pipeline
-- UART driver
-- SPI driver
-- SD card logging
-- UDP checksum validation
-- Improved dashboard interface
-- Vehicle-state warning system
-- Telemetry timeout and recovery logic
-- SystemView runtime analysis
-- CMSIS-DSP integration
-- TinyML inference
-- Track-learning mode
-- Optional per-vehicle model loading
-
----
-
-## Project Goals
-
-DriverSense-H7 is intended to demonstrate:
-
-- Register-level STM32 driver development
-- Cortex-M7 cache and MPU management
-- Ethernet DMA descriptor handling
-- Custom Ethernet protocol processing
-- Real-time UDP telemetry parsing
-- Embedded graphical interface development
-- FreeRTOS task design
-- Real-time trace and timing analysis
-- Resource-aware embedded machine learning
-
-The final goal is a compact real-time embedded telemetry platform capable of receiving vehicle data, displaying live information, detecting abnormal conditions, and eventually performing TinyML inference directly on an STM32 microcontroller.
-
----
-
-## Development Status
-
-This project is under active development.
-
-Implemented features may change as the driver architecture, networking layer, FreeRTOS integration, and dashboard interface are refined.
+**Active personal project — May 2026–present.** Features and architecture are evolving as the embedded system and machine learning research progress. Technical claims in this README distinguish implemented embedded functionality, trained offline models, and future on-device inference work.
