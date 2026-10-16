@@ -3,7 +3,7 @@
 **Custom STM32H7 embedded software · Real-time vehicle telemetry · CNN autoencoders · On-device ML research**
 
 <p align="center">
-  <img src="docs/media/drivesenseh7-prot-demo.gif" alt="DriverSense-H7 live vehicle telemetry dashboard demo" width="600">
+  <img src="docs/media/drivesenseh7-prot-demo.png" alt="DriverSense-H7 live vehicle telemetry dashboard demo" width="600">
 </p>
 
 DriverSense-H7 is a personal research and development project combining **low-level embedded systems engineering** with **machine learning for automotive telemetry analysis**.
