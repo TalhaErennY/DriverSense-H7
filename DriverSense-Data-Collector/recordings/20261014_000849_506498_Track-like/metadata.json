@@ -1,0 +1,54 @@
+{
+  "schema_version": 3,
+  "label": "Track-like",
+  "notes": "",
+  "vehicle": {
+    "CarOrdinal": 3781,
+    "CarClass": 4,
+    "CarPerformanceIndex": 758,
+    "DrivetrainType": 1,
+    "CarGroup": 43
+  },
+  "vehicle_source": "FH6_Data_Out_auto",
+  "vehicle_reference": {
+    "CarOrdinal": 3781,
+    "CarClass": 4,
+    "CarPerformanceIndex": 758,
+    "DrivetrainType": 1,
+    "CarGroup": 43
+  },
+  "start_utc": "2026-10-13T21:08:49.506498+00:00",
+  "end_utc": "2026-10-13T21:11:48.165495+00:00",
+  "requested_duration_sec": 180,
+  "actual_duration_sec": 176.343,
+  "wall_duration_sec": 178.656,
+  "paused_duration_sec": 2.313,
+  "pause_events": [
+    {
+      "reason": "menu_or_inactive",
+      "wall_start_sec": 176.343,
+      "wall_duration_sec": 2.313,
+      "active_elapsed_sec": 176.343
+    }
+  ],
+  "resume_position_tolerance_m": 25.0,
+  "stop_reason": "manual_stop",
+  "sample_hz": 25,
+  "sample_period_sec": 0.04,
+  "sample_method": "latest-received-packet / zero-order hold",
+  "max_packet_age_ms": 160,
+  "raw_packet_count": 5282,
+  "sample_count": 4409,
+  "valid_samples": 4391,
+  "invalid_samples": 18,
+  "valid_fraction": 0.99592,
+  "max_interpacket_gap_ms": 312.0,
+  "speed_min_kmh": 0.0,
+  "speed_max_kmh": 231.64,
+  "timestamp_source": "host monotonic active time excluding pauses; Forza TimestampMS preserved, not used for matching",
+  "raw_file": "raw_packets.csv",
+  "sampled_file": "samples_25hz.csv",
+  "training_file": "train_25hz.csv",
+  "feature_policy": "feature_policy.json",
+  "notice": "Only valid=1 samples should be used for training. Split train/val/test by session and vehicle, not overlapping windows."
+}
